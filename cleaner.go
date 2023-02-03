@@ -19,47 +19,51 @@ func (d *DataFrame) CleanExpired() {
 		d.Locker.RUnlock()
 
 		for _, id := range toRemove {
-			d.Locker.Lock()
-			delete(d.ExpireAt, id)
-			delete(d.Data, id)
-
-			for k1, v1 := range d.Strings {
-				for k2, v2 := range v1 {
-					delete(v2, id)
-					if len(v2) == 0 {
-						delete(v1, k2)
-					}
-				}
-				if len(v1) == 0 {
-					delete(d.Strings, k1)
-				}
-			}
-
-			for k1, v1 := range d.Numerics {
-				for k2, v2 := range v1 {
-					delete(v2, id)
-					if len(v2) == 0 {
-						delete(v1, k2)
-					}
-				}
-				if len(v1) == 0 {
-					delete(d.Numerics, k1)
-				}
-			}
-
-			for k1, v1 := range d.Booleans {
-				for k2, v2 := range v1 {
-					delete(v2, id)
-					if len(v2) == 0 {
-						delete(v1, k2)
-					}
-				}
-				if len(v1) == 0 {
-					delete(d.Booleans, k1)
-				}
-			}
-			d.Locker.Unlock()
+			d.RemoveElement(id)
 		}
 		time.Sleep(1 * time.Second)
 	}
+}
+
+func (d *DataFrame) RemoveElement(id uuid.UUID) {
+	d.Locker.Lock()
+	delete(d.ExpireAt, id)
+	delete(d.Data, id)
+
+	for k1, v1 := range d.Strings {
+		for k2, v2 := range v1 {
+			delete(v2, id)
+			if len(v2) == 0 {
+				delete(v1, k2)
+			}
+		}
+		if len(v1) == 0 {
+			delete(d.Strings, k1)
+		}
+	}
+
+	for k1, v1 := range d.Numerics {
+		for k2, v2 := range v1 {
+			delete(v2, id)
+			if len(v2) == 0 {
+				delete(v1, k2)
+			}
+		}
+		if len(v1) == 0 {
+			delete(d.Numerics, k1)
+		}
+	}
+
+	for k1, v1 := range d.Booleans {
+		for k2, v2 := range v1 {
+			delete(v2, id)
+			if len(v2) == 0 {
+				delete(v1, k2)
+			}
+		}
+		if len(v1) == 0 {
+			delete(d.Booleans, k1)
+		}
+	}
+	d.Locker.Unlock()
 }

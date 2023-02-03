@@ -1,6 +1,7 @@
 package mframe
 
 import (
+	"github.com/google/uuid"
 	"net"
 	"net/http"
 	"regexp"
@@ -408,6 +409,22 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 
 	d.Locker.RUnlock()
 	return &results
+}
+
+func (d *DataFrame) FindFirstByKey(key string) (uuid.UUID, string, interface{}) {
+	d.Locker.RLock()
+	defer d.Locker.RUnlock()
+	if d.Keys[key] == "" {
+		return uuid.Nil, key, &DataFrame{}
+	}
+	for id, v := range d.Data {
+		for k, row := range v {
+			if k == key {
+				return id, k, row
+			}
+		}
+	}
+	return uuid.Nil, key, &DataFrame{}
 }
 
 func Equals(left, right interface{}) bool {
