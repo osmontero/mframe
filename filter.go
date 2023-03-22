@@ -29,7 +29,7 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 		keys[key] = d.Keys[key]
 	}
 
-	var results DataFrame
+	var results = new(DataFrame)
 	results.Init(10 * time.Minute)
 
 	for k, t := range keys {
@@ -37,7 +37,7 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 		case "numeric":
 			aValue, ok := value.(float64)
 			if !ok {
-				return &results
+				return results
 			}
 			switch operator {
 			case "==":
@@ -109,7 +109,7 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 			case "in list":
 				aValue, ok := value.([]float64)
 				if !ok {
-					return &results
+					return results
 				}
 				if v, ok := d.Numerics[k]; ok {
 					for v, ids := range v {
@@ -125,7 +125,7 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 			case "not in list":
 				aValue, ok := value.([]float64)
 				if !ok {
-					return &results
+					return results
 				}
 				if v, ok := d.Numerics[k]; ok {
 					for v, ids := range v {
@@ -144,7 +144,7 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 		case "string":
 			aValue, ok := value.(string)
 			if !ok {
-				return &results
+				return results
 			}
 			switch operator {
 			case "==":
@@ -208,7 +208,7 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 			case "in list":
 				aValue, ok := value.([]string)
 				if !ok {
-					return &results
+					return results
 				}
 				if v, ok := d.Strings[k]; ok {
 					for v, ids := range v {
@@ -231,7 +231,7 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 			case "not in list":
 				aValue, ok := value.([]string)
 				if !ok {
-					return &results
+					return results
 				}
 				if v, ok := d.Strings[k]; ok {
 					for v, ids := range v {
@@ -383,7 +383,7 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 		case "boolean":
 			aValue, ok := value.(bool)
 			if !ok {
-				return &results
+				return results
 			}
 			switch operator {
 			case "==":
@@ -410,7 +410,7 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 		}
 	}
 
-	return &results
+	return results
 }
 
 func (d *DataFrame) FindFirstByKey(key string) (uuid.UUID, string, interface{}) {
@@ -459,7 +459,7 @@ func (d *DataFrame) FindFirstByKey(key string) (uuid.UUID, string, interface{}) 
 	}
 	
 	
-	return uuid.Nil, key, &DataFrame{}
+	return uuid.Nil, key, new(DataFrame)
 }
 
 func Equals(left, right interface{}) bool {

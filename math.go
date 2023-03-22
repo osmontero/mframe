@@ -7,7 +7,7 @@ import (
 )
 
 func (d *DataFrame) Count(name string) *DataFrame {
-	var result *DataFrame
+	var result = new(DataFrame)
 	result.Init(10 * time.Minute)
 
 	result.Insert(map[string]interface{}{name: len(d.Data)})
@@ -16,7 +16,7 @@ func (d *DataFrame) Count(name string) *DataFrame {
 }
 
 func (d *DataFrame) CountUnique(name, field string) *DataFrame {
-	var result *DataFrame
+	var result = new(DataFrame)
 	result.Init(10 * time.Minute)
 	var count = make(map[interface{}]int)
 	for _, v := range d.Data {
@@ -35,7 +35,7 @@ func (d *DataFrame) CountUnique(name, field string) *DataFrame {
 }
 
 func (d *DataFrame) Sum(name, field string) *DataFrame {
-	var result *DataFrame
+	var result = new(DataFrame)
 	result.Init(10 * time.Minute)
 
 	fList, e := d.SliceOfFloat64(field)
@@ -54,7 +54,7 @@ func (d *DataFrame) Sum(name, field string) *DataFrame {
 }
 
 func (d *DataFrame) Average(name, field string) *DataFrame {
-	var result *DataFrame
+	var result = new(DataFrame)
 	result.Init(10 * time.Minute)
 
 	fList, e := d.SliceOfFloat64(field)
@@ -73,7 +73,7 @@ func (d *DataFrame) Average(name, field string) *DataFrame {
 }
 
 func (d *DataFrame) Median(name, field string) *DataFrame {
-	var result *DataFrame
+	var result = new(DataFrame)
 	result.Init(10 * time.Minute)
 
 	fList, e := d.SliceOfFloat64(field)
@@ -92,7 +92,7 @@ func (d *DataFrame) Median(name, field string) *DataFrame {
 }
 
 func (d *DataFrame) Mode(name, field string) *DataFrame {
-	var result *DataFrame
+	var result = new(DataFrame)
 	result.Init(10 * time.Minute)
 
 	fList, e := d.SliceOfFloat64(field)
@@ -111,7 +111,7 @@ func (d *DataFrame) Mode(name, field string) *DataFrame {
 }
 
 func (d *DataFrame) Max(name, field string) *DataFrame {
-	var result *DataFrame
+	var result = new(DataFrame)
 	result.Init(10 * time.Minute)
 
 	fList, e := d.SliceOfFloat64(field)
@@ -130,7 +130,7 @@ func (d *DataFrame) Max(name, field string) *DataFrame {
 }
 
 func (d *DataFrame) Min(name, field string) *DataFrame {
-	var result *DataFrame
+	var result = new(DataFrame)
 	result.Init(10 * time.Minute)
 
 	fList, e := d.SliceOfFloat64(field)
@@ -149,7 +149,7 @@ func (d *DataFrame) Min(name, field string) *DataFrame {
 }
 
 func (d *DataFrame) Variance(name, field string) *DataFrame {
-	var result *DataFrame
+	var result = new(DataFrame)
 	result.Init(10 * time.Minute)
 
 	fList, e := d.SliceOfFloat64(field)
