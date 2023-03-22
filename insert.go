@@ -110,12 +110,13 @@ func (d *DataFrame) index(f map[string]interface{}, k string, id uuid.UUID, r *R
 
 func (d *DataFrame) Insert(data map[string]interface{}) {
 	d.Locker.Lock()
+	defer d.Locker.Unlock()
+	
 	id := uuid.New()
 	var row = make(Row)
 	d.index(data, "", id, &row)
 	d.Data[id] = row
 	d.ExpireAt[id] = time.Now().UTC().Add(d.TTL)
-	d.Locker.Unlock()
 }
 
 func (d *DataFrame) addMapping(key, kind string) {

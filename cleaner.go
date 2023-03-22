@@ -27,6 +27,8 @@ func (d *DataFrame) CleanExpired() {
 
 func (d *DataFrame) RemoveElement(id uuid.UUID) {
 	d.Locker.Lock()
+	defer d.Locker.Unlock()
+	
 	delete(d.ExpireAt, id)
 	delete(d.Data, id)
 
@@ -65,5 +67,4 @@ func (d *DataFrame) RemoveElement(id uuid.UUID) {
 			delete(d.Booleans, k1)
 		}
 	}
-	d.Locker.Unlock()
 }

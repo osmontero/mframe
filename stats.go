@@ -37,6 +37,7 @@ func (d *DataFrame) Stats(name string) {
 		}
 
 		d.Locker.RUnlock()
+
 		time.Sleep(1 * time.Minute)
 	}
 }

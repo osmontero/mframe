@@ -1,21 +1,24 @@
 package mframe
 
 import (
-	"github.com/google/uuid"
 	"net"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/quantfall/rerror"
 	"google.golang.org/grpc/codes"
 )
 
 func (d *DataFrame) Filter(operator, key string, value interface{}, options map[string]bool) *DataFrame {
-	var keys = make(map[string]string)
 	d.Locker.RLock()
+	defer d.Locker.RUnlock()
 
+	var keys = make(map[string]string)
+	
 	if Contains(key, "^") || Contains(key, "[") || Contains(key, "(") {
 		for k, t := range d.Keys {
 			if MatchesRegExp(k, key) {
@@ -407,13 +410,13 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 		}
 	}
 
-	d.Locker.RUnlock()
 	return &results
 }
 
 func (d *DataFrame) FindFirstByKey(key string) (uuid.UUID, string, interface{}) {
 	d.Locker.RLock()
 	defer d.Locker.RUnlock()
+	
 	if d.Keys[key] == "" {
 		return uuid.Nil, key, &DataFrame{}
 	}
