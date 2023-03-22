@@ -6,16 +6,16 @@ import (
 	"github.com/montanaflynn/stats"
 )
 
-func (d *DataFrame) Count() *DataFrame {
+func (d *DataFrame) Count(name string) *DataFrame {
 	var result *DataFrame
 	result.Init(10 * time.Minute)
 
-	result.Insert(map[string]interface{}{"value": len(d.Data)})
+	result.Insert(map[string]interface{}{name: len(d.Data)})
 
 	return result
 }
 
-func (d *DataFrame) CountUnique(field string) *DataFrame {
+func (d *DataFrame) CountUnique(name, field string) *DataFrame {
 	var result *DataFrame
 	result.Init(10 * time.Minute)
 	var count = make(map[interface{}]int)
@@ -27,13 +27,14 @@ func (d *DataFrame) CountUnique(field string) *DataFrame {
 	}
 
 	for k, v := range count {
-		result.Insert(map[string]interface{}{"data": k, "value": v})
+		kv := map[string]interface{}{"value": k, "count": v}
+		result.Insert(map[string]interface{}{name: kv})
 	}
 
 	return result
 }
 
-func (d *DataFrame) Sum(field string) *DataFrame {
+func (d *DataFrame) Sum(name, field string) *DataFrame {
 	var result *DataFrame
 	result.Init(10 * time.Minute)
 
@@ -47,12 +48,12 @@ func (d *DataFrame) Sum(field string) *DataFrame {
 		return result
 	}
 
-	result.Insert(map[string]interface{}{"value": sum})
+	result.Insert(map[string]interface{}{name: sum})
 
 	return result
 }
 
-func (d *DataFrame) Average(field string) *DataFrame {
+func (d *DataFrame) Average(name, field string) *DataFrame {
 	var result *DataFrame
 	result.Init(10 * time.Minute)
 
@@ -66,12 +67,12 @@ func (d *DataFrame) Average(field string) *DataFrame {
 		return result
 	}
 
-	result.Insert(map[string]interface{}{"value": average})
+	result.Insert(map[string]interface{}{name: average})
 
 	return result
 }
 
-func (d *DataFrame) Median(field string) *DataFrame {
+func (d *DataFrame) Median(name, field string) *DataFrame {
 	var result *DataFrame
 	result.Init(10 * time.Minute)
 
@@ -85,12 +86,12 @@ func (d *DataFrame) Median(field string) *DataFrame {
 		return result
 	}
 
-	result.Insert(map[string]interface{}{"value": median})
+	result.Insert(map[string]interface{}{name: median})
 
 	return result
 }
 
-func (d *DataFrame) Mode(field string) *DataFrame {
+func (d *DataFrame) Mode(name, field string) *DataFrame {
 	var result *DataFrame
 	result.Init(10 * time.Minute)
 
@@ -104,12 +105,12 @@ func (d *DataFrame) Mode(field string) *DataFrame {
 		return result
 	}
 
-	result.Insert(map[string]interface{}{"value": mode})
+	result.Insert(map[string]interface{}{name: mode})
 
 	return result
 }
 
-func (d *DataFrame) Max(field string) *DataFrame {
+func (d *DataFrame) Max(name, field string) *DataFrame {
 	var result *DataFrame
 	result.Init(10 * time.Minute)
 
@@ -123,12 +124,12 @@ func (d *DataFrame) Max(field string) *DataFrame {
 		return result
 	}
 
-	result.Insert(map[string]interface{}{"value": max})
+	result.Insert(map[string]interface{}{name: max})
 
 	return result
 }
 
-func (d *DataFrame) Min(field string) *DataFrame {
+func (d *DataFrame) Min(name, field string) *DataFrame {
 	var result *DataFrame
 	result.Init(10 * time.Minute)
 
@@ -142,12 +143,12 @@ func (d *DataFrame) Min(field string) *DataFrame {
 		return result
 	}
 
-	result.Insert(map[string]interface{}{"value": min})
+	result.Insert(map[string]interface{}{name: min})
 
 	return result
 }
 
-func (d *DataFrame) Variance(field string) *DataFrame {
+func (d *DataFrame) Variance(name, field string) *DataFrame {
 	var result *DataFrame
 	result.Init(10 * time.Minute)
 
@@ -161,7 +162,7 @@ func (d *DataFrame) Variance(field string) *DataFrame {
 		return result
 	}
 
-	result.Insert(map[string]interface{}{"value": variance})
+	result.Insert(map[string]interface{}{name: variance})
 
 	return result
 }
