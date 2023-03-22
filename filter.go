@@ -416,17 +416,49 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 func (d *DataFrame) FindFirstByKey(key string) (uuid.UUID, string, interface{}) {
 	d.Locker.RLock()
 	defer d.Locker.RUnlock()
+
+	var keys = make(map[string]string)
 	
-	if d.Keys[key] == "" {
-		return uuid.Nil, key, &DataFrame{}
+	if Contains(key, "^") || Contains(key, "[") || Contains(key, "(") {
+		for k, t := range d.Keys {
+			if MatchesRegExp(k, key) {
+				keys[k] = t
+			}
+		}
+	} else {
+		keys[key] = d.Keys[key]
 	}
-	for id, v := range d.Data {
-		for k, row := range v {
-			if k == key {
-				return id, k, row
+
+	for k, t := range keys {
+		switch t {
+		case "numeric":
+			if values, ok := d.Numerics[k]; ok{
+				for _, value := range values{
+					for row := range value{
+						return row, k, d.Data[row][k]
+					}
+				}
+			}
+		case "string":
+			if values, ok := d.Strings[k]; ok{
+				for _, value := range values{
+					for row := range value{
+						return row, k, d.Data[row][k]
+					}
+				}
+			}
+		case "boolean":
+			if values, ok := d.Booleans[k]; ok{
+				for _, value := range values{
+					for row := range value{
+						return row, k, d.Data[row][k]
+					}
+				}
 			}
 		}
 	}
+	
+	
 	return uuid.Nil, key, &DataFrame{}
 }
 
