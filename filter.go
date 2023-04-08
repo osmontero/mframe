@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/quantfall/rerror"
-	"google.golang.org/grpc/codes"
 )
 
 func (d *DataFrame) Filter(operator, key string, value interface{}, options map[string]bool) *DataFrame {
@@ -18,7 +17,7 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 	defer d.Locker.RUnlock()
 
 	var keys = make(map[string]string)
-	
+
 	if Contains(key, "^") || Contains(key, "[") || Contains(key, "(") {
 		for k, t := range d.Keys {
 			if MatchesRegExp(k, key) {
@@ -139,7 +138,7 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			default:
-				rerror.ErrorF(http.StatusBadRequest, codes.InvalidArgument, "incorrect operator '%s' for key '%s' of type '%s'", operator, key, t)
+				rerror.ErrorF(http.StatusBadRequest, "incorrect operator '%s' for key '%s' of type '%s'", operator, key, t)
 			}
 		case "string":
 			aValue, ok := value.(string)
@@ -378,7 +377,7 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			default:
-				rerror.ErrorF(http.StatusBadRequest, codes.InvalidArgument, "incorrect operator '%s' for key '%s' of type '%s'", operator, key, t)
+				rerror.ErrorF(http.StatusBadRequest, "incorrect operator '%s' for key '%s' of type '%s'", operator, key, t)
 			}
 		case "boolean":
 			aValue, ok := value.(bool)
@@ -405,7 +404,7 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			default:
-				rerror.ErrorF(http.StatusBadRequest, codes.InvalidArgument, "incorrect operator '%s' for key '%s' of type '%s'", operator, key, t)
+				rerror.ErrorF(http.StatusBadRequest, "incorrect operator '%s' for key '%s' of type '%s'", operator, key, t)
 			}
 		}
 	}
@@ -418,7 +417,7 @@ func (d *DataFrame) FindFirstByKey(key string) (uuid.UUID, string, interface{}) 
 	defer d.Locker.RUnlock()
 
 	var keys = make(map[string]string)
-	
+
 	if Contains(key, "^") || Contains(key, "[") || Contains(key, "(") {
 		for k, t := range d.Keys {
 			if MatchesRegExp(k, key) {
@@ -432,33 +431,32 @@ func (d *DataFrame) FindFirstByKey(key string) (uuid.UUID, string, interface{}) 
 	for k, t := range keys {
 		switch t {
 		case "numeric":
-			if values, ok := d.Numerics[k]; ok{
-				for _, value := range values{
-					for row := range value{
+			if values, ok := d.Numerics[k]; ok {
+				for _, value := range values {
+					for row := range value {
 						return row, k, d.Data[row][k]
 					}
 				}
 			}
 		case "string":
-			if values, ok := d.Strings[k]; ok{
-				for _, value := range values{
-					for row := range value{
+			if values, ok := d.Strings[k]; ok {
+				for _, value := range values {
+					for row := range value {
 						return row, k, d.Data[row][k]
 					}
 				}
 			}
 		case "boolean":
-			if values, ok := d.Booleans[k]; ok{
-				for _, value := range values{
-					for row := range value{
+			if values, ok := d.Booleans[k]; ok {
+				for _, value := range values {
+					for row := range value {
 						return row, k, d.Data[row][k]
 					}
 				}
 			}
 		}
 	}
-	
-	
+
 	return uuid.Nil, key, new(DataFrame)
 }
 

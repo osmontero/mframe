@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/quantfall/rerror"
-	"google.golang.org/grpc/codes"
 )
 
 func (d *DataFrame) index(f map[string]interface{}, k string, id uuid.UUID, r *Row) {
@@ -103,7 +102,7 @@ func (d *DataFrame) index(f map[string]interface{}, k string, id uuid.UUID, r *R
 
 			d.Strings[key][value.(string)][id] = false
 		default:
-			rerror.ErrorF(http.StatusBadRequest, codes.InvalidArgument, "unknown field type: %s", t.String())
+			rerror.ErrorF(http.StatusBadRequest, "unknown field type: %s", t.String())
 		}
 	}
 }
@@ -111,7 +110,7 @@ func (d *DataFrame) index(f map[string]interface{}, k string, id uuid.UUID, r *R
 func (d *DataFrame) Insert(data map[string]interface{}) {
 	d.Locker.Lock()
 	defer d.Locker.Unlock()
-	
+
 	id := uuid.New()
 	var row = make(Row)
 	d.index(data, "", id, &row)
@@ -121,7 +120,7 @@ func (d *DataFrame) Insert(data map[string]interface{}) {
 
 func (d *DataFrame) addMapping(key, kind string) {
 	if k, ok := d.Keys[key]; ok && k != kind {
-		rerror.ErrorF(http.StatusBadRequest, codes.InvalidArgument, "cannot map key '%s' as '%s' because it is already mapped as type '%s'", key, kind, d.Keys[key])
+		rerror.ErrorF(http.StatusBadRequest, "cannot map key '%s' as '%s' because it is already mapped as type '%s'", key, kind, d.Keys[key])
 		return
 	}
 

@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/quantfall/rerror"
-	"google.golang.org/grpc/codes"
 )
 
 func (d *DataFrame) ToSlice() []map[string]interface{} {
@@ -22,7 +21,7 @@ func (d *DataFrame) SliceOf(field string) ([]interface{}, *rerror.Error) {
 	for _, v := range d.Data {
 		value, ok := v[field]
 		if !ok {
-			return []interface{}{}, rerror.ErrorF(http.StatusBadRequest, codes.InvalidArgument, "field '%s' not found in log '%v'", field, v)
+			return []interface{}{}, rerror.ErrorF(http.StatusBadRequest, "field '%s' not found in log '%v'", field, v)
 		}
 		list = append(list, value)
 	}
@@ -40,7 +39,7 @@ func (d *DataFrame) SliceOfFloat64(field string) ([]float64, *rerror.Error) {
 	for _, value := range list {
 		v, ok := value.(float64)
 		if !ok {
-			return []float64{}, rerror.ErrorF(http.StatusBadRequest, codes.InvalidArgument, "'%v' is not type of float64", value)
+			return []float64{}, rerror.ErrorF(http.StatusBadRequest, "'%v' is not type of float64", value)
 		}
 		fList = append(fList, v)
 	}
