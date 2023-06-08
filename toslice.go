@@ -1,9 +1,7 @@
 package mframe
 
 import (
-	"net/http"
-
-	"github.com/quantfall/rerror"
+	"fmt"
 )
 
 func (d *DataFrame) ToSlice() []map[string]interface{} {
@@ -16,12 +14,12 @@ func (d *DataFrame) ToSlice() []map[string]interface{} {
 	return result
 }
 
-func (d *DataFrame) SliceOf(field string) ([]interface{}, *rerror.Error) {
+func (d *DataFrame) SliceOf(field string) ([]interface{}, error) {
 	var list []interface{}
 	for _, v := range d.Data {
 		value, ok := v[field]
 		if !ok {
-			return []interface{}{}, rerror.ErrorF(http.StatusBadRequest, "field '%s' not found in log '%v'", field, v)
+			return []interface{}{}, fmt.Errorf("field '%s' not found in log '%v'", field, v)
 		}
 		list = append(list, value)
 	}
@@ -29,7 +27,7 @@ func (d *DataFrame) SliceOf(field string) ([]interface{}, *rerror.Error) {
 	return list, nil
 }
 
-func (d *DataFrame) SliceOfFloat64(field string) ([]float64, *rerror.Error) {
+func (d *DataFrame) SliceOfFloat64(field string) ([]float64, error) {
 	list, e := d.SliceOf(field)
 	if e != nil {
 		return []float64{}, e
@@ -39,7 +37,7 @@ func (d *DataFrame) SliceOfFloat64(field string) ([]float64, *rerror.Error) {
 	for _, value := range list {
 		v, ok := value.(float64)
 		if !ok {
-			return []float64{}, rerror.ErrorF(http.StatusBadRequest, "'%v' is not type of float64", value)
+			return []float64{}, fmt.Errorf("'%v' is not type of float64", value)
 		}
 		fList = append(fList, v)
 	}

@@ -2,12 +2,11 @@ package mframe
 
 import (
 	"fmt"
-	"net/http"
+	"log"
 	"reflect"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/quantfall/rerror"
 )
 
 func (d *DataFrame) index(f map[string]interface{}, k string, id uuid.UUID, r *Row) {
@@ -102,7 +101,7 @@ func (d *DataFrame) index(f map[string]interface{}, k string, id uuid.UUID, r *R
 
 			d.Strings[key][value.(string)][id] = false
 		default:
-			rerror.ErrorF(http.StatusBadRequest, "unknown field type: %s", t.String())
+			log.Printf("unknown field type: %s", t.String())
 		}
 	}
 }
@@ -120,7 +119,7 @@ func (d *DataFrame) Insert(data map[string]interface{}) {
 
 func (d *DataFrame) addMapping(key, kind string) {
 	if k, ok := d.Keys[key]; ok && k != kind {
-		rerror.ErrorF(http.StatusBadRequest, "cannot map key '%s' as '%s' because it is already mapped as type '%s'", key, kind, d.Keys[key])
+		log.Printf("cannot map key '%s' as '%s' because it is already mapped as type '%s'", key, kind, d.Keys[key])
 		return
 	}
 

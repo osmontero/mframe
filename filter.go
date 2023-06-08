@@ -1,15 +1,13 @@
 package mframe
 
 import (
+	"log"
 	"net"
-	"net/http"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
-
-	"github.com/quantfall/rerror"
 )
 
 func (d *DataFrame) Filter(operator, key string, value interface{}, options map[string]bool) *DataFrame {
@@ -138,7 +136,7 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			default:
-				rerror.ErrorF(http.StatusBadRequest, "incorrect operator '%s' for key '%s' of type '%s'", operator, key, t)
+				log.Printf("incorrect operator '%s' for key '%s' of type '%s'", operator, key, t)
 			}
 		case "string":
 			aValue, ok := value.(string)
@@ -377,7 +375,7 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			default:
-				rerror.ErrorF(http.StatusBadRequest, "incorrect operator '%s' for key '%s' of type '%s'", operator, key, t)
+				log.Printf("incorrect operator '%s' for key '%s' of type '%s'", operator, key, t)
 			}
 		case "boolean":
 			aValue, ok := value.(bool)
@@ -404,7 +402,7 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			default:
-				rerror.ErrorF(http.StatusBadRequest, "incorrect operator '%s' for key '%s' of type '%s'", operator, key, t)
+				log.Printf("incorrect operator '%s' for key '%s' of type '%s'", operator, key, t)
 			}
 		}
 	}
