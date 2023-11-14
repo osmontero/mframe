@@ -1,8 +1,8 @@
-module github.com/quantfall/mframe
+module github.com/threatwinds/mframe
 
-go 1.19
+go 1.21
 
 require (
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.4.0
 	github.com/montanaflynn/stats v0.7.1
 )

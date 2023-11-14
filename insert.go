@@ -41,20 +41,13 @@ func (d *DataFrame) index(f map[string]interface{}, k string, id uuid.UUID, r *R
 
 			d.Strings[key][value.(string)][id] = false
 		case "float64":
-			d.addMapping(key, "numeric")
-
-			tmpR := *r
-			tmpR[key] = value
-
-			if len(d.Numerics[key]) == 0 {
-				d.Numerics[key] = make(map[float64]map[uuid.UUID]bool)
-			}
-
-			if len(d.Numerics[key][value.(float64)]) == 0 {
-				d.Numerics[key][value.(float64)] = make(map[uuid.UUID]bool)
-			}
-
-			d.Numerics[key][value.(float64)][id] = false
+			d.num(key, value.(float64), id, r)
+		case "int64":
+			d.num(key, float64(value.(int64)), id, r)
+		case "float":
+			d.num(key, float64(value.(float32)), id, r)
+		case "int":
+			d.num(key, float64(value.(int)), id, r)
 		case "bool":
 			d.addMapping(key, "boolean")
 
@@ -104,6 +97,23 @@ func (d *DataFrame) index(f map[string]interface{}, k string, id uuid.UUID, r *R
 			log.Printf("unknown field type: %s", t.String())
 		}
 	}
+}
+
+func (d *DataFrame) num(key string, value float64, id uuid.UUID, r *Row) {
+	d.addMapping(key, "numeric")
+
+	tmpR := *r
+	tmpR[key] = value
+
+	if len(d.Numerics[key]) == 0 {
+		d.Numerics[key] = make(map[float64]map[uuid.UUID]bool)
+	}
+
+	if len(d.Numerics[key][value]) == 0 {
+		d.Numerics[key][value] = make(map[uuid.UUID]bool)
+	}
+
+	d.Numerics[key][value][id] = false
 }
 
 func (d *DataFrame) Insert(data map[string]interface{}) {

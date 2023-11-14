@@ -32,18 +32,22 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 	for k, t := range keys {
 		switch t {
 		case "numeric":
-			aValue, ok := value.(float64)
-			if !ok {
-				return results
-			}
 			switch operator {
 			case "==":
+				aValue, ok := value.(float64)
+				if !ok {
+					return results
+				}
 				if ids, ok := d.Numerics[k][aValue]; ok {
 					for id := range ids {
 						results.Insert(d.Data[id])
 					}
 				}
 			case "!=":
+				aValue, ok := value.(float64)
+				if !ok {
+					return results
+				}
 				if v, ok := d.Numerics[k]; ok {
 					for v, ids := range v {
 						if Equals(v, aValue) {
@@ -56,9 +60,13 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			case ">":
+				aValue, ok := value.(float64)
+				if !ok {
+					return results
+				}
 				if v, ok := d.Numerics[k]; ok {
-					for v, ids := range v {
-						if !MajorThan(v, aValue) {
+					for v1, ids := range v {
+						if !MajorThan(v1, aValue) {
 							continue
 						}
 
@@ -68,9 +76,13 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			case "<":
+				aValue, ok := value.(float64)
+				if !ok {
+					return results
+				}
 				if v, ok := d.Numerics[k]; ok {
-					for v, ids := range v {
-						if MajorThan(v, aValue) {
+					for v1, ids := range v {
+						if MajorThan(v1, aValue) {
 							continue
 						}
 
@@ -80,6 +92,10 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			case ">=":
+				aValue, ok := value.(float64)
+				if !ok {
+					return results
+				}
 				if v, ok := d.Numerics[k]; ok {
 					for v, ids := range v {
 						if !Equals(v, aValue) && !MajorThan(v, aValue) {
@@ -92,6 +108,10 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			case "<=":
+				aValue, ok := value.(float64)
+				if !ok {
+					return results
+				}
 				if v, ok := d.Numerics[k]; ok {
 					for v, ids := range v {
 						if !Equals(v, aValue) && MajorThan(v, aValue) {
@@ -139,12 +159,12 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 				log.Printf("incorrect operator '%s' for key '%s' of type '%s'", operator, key, t)
 			}
 		case "string":
-			aValue, ok := value.(string)
-			if !ok {
-				return results
-			}
 			switch operator {
 			case "==":
+				aValue, ok := value.(string)
+				if !ok {
+					return results
+				}
 				if v, ok := d.Strings[k]; ok {
 					for v, ids := range v {
 						if sensitive, ok := options["case-sensitive"]; ok && !sensitive {
@@ -162,6 +182,10 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			case "!=":
+				aValue, ok := value.(string)
+				if !ok {
+					return results
+				}
 				if v, ok := d.Strings[k]; ok {
 					for v, ids := range v {
 						if sensitive, ok := options["case-sensitive"]; ok && !sensitive {
@@ -179,6 +203,10 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			case "regexp":
+				aValue, ok := value.(string)
+				if !ok {
+					return results
+				}
 				if v, ok := d.Strings[k]; ok {
 					for v, ids := range v {
 						if !MatchesRegExp(v, aValue) {
@@ -191,6 +219,10 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			case "not regexp":
+				aValue, ok := value.(string)
+				if !ok {
+					return results
+				}
 				if v, ok := d.Strings[k]; ok {
 					for v, ids := range v {
 						if MatchesRegExp(v, aValue) {
@@ -249,6 +281,10 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			case "in cidr":
+				aValue, ok := value.(string)
+				if !ok {
+					return results
+				}
 				if v, ok := d.Strings[k]; ok {
 					for v, ids := range v {
 						if !InCIDR(v, aValue) {
@@ -261,6 +297,10 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			case "not in cidr":
+				aValue, ok := value.(string)
+				if !ok {
+					return results
+				}
 				if v, ok := d.Strings[k]; ok {
 					for v, ids := range v {
 						if InCIDR(v, aValue) {
@@ -273,6 +313,10 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			case "contains":
+				aValue, ok := value.(string)
+				if !ok {
+					return results
+				}
 				if v, ok := d.Strings[k]; ok {
 					for v, ids := range v {
 						if sensitive, ok := options["case-sensitive"]; ok && !sensitive {
@@ -290,6 +334,10 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			case "not contains":
+				aValue, ok := value.(string)
+				if !ok {
+					return results
+				}
 				if v, ok := d.Strings[k]; ok {
 					for v, ids := range v {
 						if sensitive, ok := options["case-sensitive"]; ok && !sensitive {
@@ -307,6 +355,10 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			case "starts with":
+				aValue, ok := value.(string)
+				if !ok {
+					return results
+				}
 				if v, ok := d.Strings[k]; ok {
 					for v, ids := range v {
 						if sensitive, ok := options["case-sensitive"]; ok && !sensitive {
@@ -324,6 +376,10 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			case "not starts with":
+				aValue, ok := value.(string)
+				if !ok {
+					return results
+				}
 				if v, ok := d.Strings[k]; ok {
 					for v, ids := range v {
 						if sensitive, ok := options["case-sensitive"]; ok && !sensitive {
@@ -341,6 +397,10 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			case "ends with":
+				aValue, ok := value.(string)
+				if !ok {
+					return results
+				}
 				if v, ok := d.Strings[k]; ok {
 					for v, ids := range v {
 						if sensitive, ok := options["case-sensitive"]; ok && !sensitive {
@@ -358,6 +418,10 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			case "not ends with":
+				aValue, ok := value.(string)
+				if !ok {
+					return results
+				}
 				if v, ok := d.Strings[k]; ok {
 					for v, ids := range v {
 						if sensitive, ok := options["case-sensitive"]; ok && !sensitive {
