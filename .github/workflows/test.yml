@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    name: Build
+    name: Testing
     runs-on: ubuntu-latest
     steps:
 
@@ -20,7 +20,7 @@ jobs:
       id: go
 
     - name: Get dependencies
-      working-directory: ./installer
+      working-directory: ./
       run: |
         go get -v -t -d ./...
         if [ -f Gopkg.toml ]; then
