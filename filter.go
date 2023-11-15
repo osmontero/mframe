@@ -1,3 +1,7 @@
+// Package mframe provides a DataFrame struct and methods to manipulate it.
+// This file contains the Filter and FindFirstByKey methods.
+// The Filter method filters the DataFrame based on a given operator, key, value, and options.
+// The FindFirstByKey method returns the first row that matches a given key.
 package mframe
 
 import (
@@ -10,6 +14,22 @@ import (
 	"github.com/google/uuid"
 )
 
+// Filter filters the DataFrame based on a given operator, key, value, and options.
+// The supported operators are:
+// - "==": equal to
+// - "!=": not equal to
+// - ">": greater than
+// - "<": less than
+// - ">=": greater than or equal to
+// - "<=": less than or equal to
+// - "in list": in list of values
+// - "not in list": not in list of values
+// - "regexp": matches regular expression
+// - "not regexp": does not match regular expression
+// - "in cidr": in CIDR range
+// - "not in cidr": not in CIDR range
+// - "contains": contains substring
+// - "not contains": does not contain substring
 func (d *DataFrame) Filter(operator, key string, value interface{}, options map[string]bool) *DataFrame {
 	d.Locker.RLock()
 	defer d.Locker.RUnlock()
@@ -474,6 +494,7 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 	return results
 }
 
+// FindFirstByKey returns the first row that matches a given key.
 func (d *DataFrame) FindFirstByKey(key string) (uuid.UUID, string, interface{}) {
 	d.Locker.RLock()
 	defer d.Locker.RUnlock()

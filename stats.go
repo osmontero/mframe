@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// Stats periodically logs statistics about the DataFrame.
 func (d *DataFrame) Stats(name string) {
 	for {
 		d.Locker.RLock()

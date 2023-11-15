@@ -6,6 +6,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// CleanExpired removes elements from the DataFrame that have expired based on their expiration time.
+// It runs in an infinite loop, checking for expired elements every second.
 func (d *DataFrame) CleanExpired() {
 	for {
 		now := time.Now().UTC()
@@ -25,6 +27,8 @@ func (d *DataFrame) CleanExpired() {
 	}
 }
 
+// RemoveElement removes an element from the DataFrame by its ID.
+// It deletes the element from the Data, ExpireAt, Strings, Numerics, and Booleans maps.
 func (d *DataFrame) RemoveElement(id uuid.UUID) {
 	d.Locker.Lock()
 	defer d.Locker.Unlock()

@@ -116,6 +116,11 @@ func (d *DataFrame) num(key string, value float64, id uuid.UUID, r *Row) {
 	d.Numerics[key][value][id] = false
 }
 
+// Insert adds a new row to the DataFrame with the given data.
+// The data is a map of string keys to interface{} values.
+// The function indexes the data and adds it to the DataFrame.
+// The function also generates a new UUID for the row and sets its expiration time.
+// The function is thread-safe and uses a mutex to protect the DataFrame from concurrent writes.
 func (d *DataFrame) Insert(data map[string]interface{}) {
 	d.Locker.Lock()
 	defer d.Locker.Unlock()
