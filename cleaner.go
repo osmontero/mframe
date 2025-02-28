@@ -11,7 +11,9 @@ import (
 func (d *DataFrame) CleanExpired() {
 	for {
 		now := time.Now().UTC()
-		var toRemove = []uuid.UUID{}
+
+		var toRemove []uuid.UUID
+
 		d.Locker.RLock()
 		for k, v := range d.ExpireAt {
 			if v.Before(now) {
@@ -23,6 +25,7 @@ func (d *DataFrame) CleanExpired() {
 		for _, id := range toRemove {
 			d.RemoveElement(id)
 		}
+
 		time.Sleep(1 * time.Second)
 	}
 }
@@ -32,7 +35,7 @@ func (d *DataFrame) CleanExpired() {
 func (d *DataFrame) RemoveElement(id uuid.UUID) {
 	d.Locker.Lock()
 	defer d.Locker.Unlock()
-	
+
 	delete(d.ExpireAt, id)
 	delete(d.Data, id)
 

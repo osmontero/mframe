@@ -7,23 +7,39 @@ import (
 	"github.com/google/uuid"
 )
 
+type KeyType int
+
+type KeyName string
+
+type FilterOption int
+
+const (
+	CaseSensitive FilterOption = 1
+)
+
+const (
+	String  KeyType = 1
+	Numeric KeyType = 2
+	Boolean KeyType = 3
+)
+
 // KeysBTree is a map of string keys to string values.
-type KeysBTree map[string]string
+type KeysBTree map[KeyName]KeyType
 
 // StringsBTree is a map of string keys to map of string keys to map of UUID keys to boolean values.
-type StringsBTree map[string]map[string]map[uuid.UUID]bool
+type StringsBTree map[KeyName]map[string]map[uuid.UUID]bool
 
 // NumericsBTree is a map of string keys to map of float64 keys to map of UUID keys to boolean values.
-type NumericsBTree map[string]map[float64]map[uuid.UUID]bool
+type NumericsBTree map[KeyName]map[float64]map[uuid.UUID]bool
 
 // BooleansBTree is a map of string keys to map of boolean keys to map of UUID keys to boolean values.
-type BooleansBTree map[string]map[bool]map[uuid.UUID]bool
+type BooleansBTree map[KeyName]map[bool]map[uuid.UUID]bool
 
 // ExpireAtBTree is a map of UUID keys to time.Time values.
 type ExpireAtBTree map[uuid.UUID]time.Time
 
 // Row is a map of string keys to interface{} values.
-type Row map[string]interface{}
+type Row map[KeyName]interface{}
 
 // DataFrame is a struct that holds data in a map of UUID keys to Row values, and several B-tree maps for indexing.
 type DataFrame struct {

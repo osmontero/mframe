@@ -5,41 +5,68 @@
 package mframe
 
 import (
+	"github.com/google/uuid"
 	"log"
 	"net"
 	"regexp"
 	"strings"
-	"time"
-
-	"github.com/google/uuid"
 )
 
-// Filter filters the DataFrame based on a given operator, key, value, and options.
-// The supported operators are:
-// - "==": equal to
-// - "!=": not equal to
-// - ">": greater than
-// - "<": less than
-// - ">=": greater than or equal to
-// - "<=": less than or equal to
-// - "in list": in list of values
-// - "not in list": not in list of values
-// - "regexp": matches regular expression
-// - "not regexp": does not match regular expression
-// - "in cidr": in CIDR range
-// - "not in cidr": not in CIDR range
-// - "contains": contains substring
-// - "not contains": does not contain substring
-func (d *DataFrame) Filter(operator, key string, value interface{}, options map[string]bool) *DataFrame {
+type Operator int
+
+const (
+	Equals        Operator = 1
+	NotEquals     Operator = 2
+	Major         Operator = 3
+	Minor         Operator = 4
+	MajorEquals   Operator = 5
+	MinorEquals   Operator = 6
+	InList        Operator = 7
+	NotInList     Operator = 8
+	RegExp        Operator = 9
+	NotRegExp     Operator = 10
+	InCIDR        Operator = 11
+	NotInCIDR     Operator = 12
+	Contains      Operator = 13
+	NotContains   Operator = 14
+	StartsWith    Operator = 15
+	NotStartsWith Operator = 16
+	EndsWith      Operator = 17
+	NotEndsWith   Operator = 18
+)
+
+// Filter method filters a DataFrame based on criteria such as equality, comparison,
+// list inclusion, regular expressions, and CIDR matching.
+//
+// Available Operators:
+// - Equals: Available for numeric, string and bool types.
+// - NotEquals: Available for numeric, string and bool types.
+// - Major: Available for numeric types.
+// - Minor: Available for numeric types.
+// - MajorEquals: Available for numeric types.
+// - MinorEquals: Available for numeric types.
+// - InList: Available for numeric and string types.
+// - NotInList: Available for numeric and string types.
+// - RegExp: Available for string types.
+// - NotRegExp Available for string types.
+// - InCIDR Available for string types.
+// - NotInCIDR Available for string types.
+// - Contains Available for string types.
+// - NotContains Available for string types.
+// - StartsWith Available for string types.
+// - NotStartsWith Available for string types.
+// - EndsWith Available for string types.
+// - NotEndsWith Available for string types.
+func (d *DataFrame) Filter(operator Operator, key KeyName, value any, options map[FilterOption]bool) *DataFrame {
 	d.Locker.RLock()
 	defer d.Locker.RUnlock()
 
-	var keys = make(map[string]string)
+	var keys = make(map[KeyName]KeyType)
 
-	if Contains(key, "^") || Contains(key, "[") || Contains(key, "(") {
-		for k, t := range d.Keys {
-			if MatchesRegExp(k, key) {
-				keys[k] = t
+	if ContainsF(string(key), "^") || ContainsF(string(key), "[") || ContainsF(string(key), "(") {
+		for dataFrameKey, keyType := range d.Keys {
+			if m, e := MatchesRegExpF(string(dataFrameKey), string(key)); e == nil && m {
+				keys[dataFrameKey] = keyType
 			}
 		}
 	} else {
@@ -47,30 +74,30 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 	}
 
 	var results = new(DataFrame)
-	results.Init(10 * time.Minute)
+	results.Init(d.TTL)
 
-	for k, t := range keys {
-		switch t {
-		case "numeric":
+	for dataFrameKey, keyType := range keys {
+		switch keyType {
+		case Numeric:
 			switch operator {
-			case "==":
-				aValue, ok := value.(float64)
+			case Equals:
+				floatValue, ok := value.(float64)
 				if !ok {
 					return results
 				}
-				if ids, ok := d.Numerics[k][aValue]; ok {
+				if ids, ok := d.Numerics[dataFrameKey][floatValue]; ok {
 					for id := range ids {
 						results.Insert(d.Data[id])
 					}
 				}
-			case "!=":
-				aValue, ok := value.(float64)
+			case NotEquals:
+				floatValue, ok := value.(float64)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Numerics[k]; ok {
-					for v, ids := range v {
-						if Equals(v, aValue) {
+				if keyValues, ok := d.Numerics[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if EqualsF(keyValue, floatValue) {
 							continue
 						}
 
@@ -79,14 +106,14 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 						}
 					}
 				}
-			case ">":
-				aValue, ok := value.(float64)
+			case Major:
+				floatValue, ok := value.(float64)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Numerics[k]; ok {
-					for v1, ids := range v {
-						if !MajorThan(v1, aValue) {
+				if keyValues, ok := d.Numerics[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if !MajorThanF(keyValue, floatValue) {
 							continue
 						}
 
@@ -95,14 +122,14 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 						}
 					}
 				}
-			case "<":
-				aValue, ok := value.(float64)
+			case Minor:
+				floatValue, ok := value.(float64)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Numerics[k]; ok {
-					for v1, ids := range v {
-						if MajorThan(v1, aValue) {
+				if keyValues, ok := d.Numerics[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if MajorThanF(keyValue, floatValue) {
 							continue
 						}
 
@@ -111,14 +138,14 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 						}
 					}
 				}
-			case ">=":
-				aValue, ok := value.(float64)
+			case MajorEquals:
+				floatValue, ok := value.(float64)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Numerics[k]; ok {
-					for v, ids := range v {
-						if !Equals(v, aValue) && !MajorThan(v, aValue) {
+				if keyValues, ok := d.Numerics[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if !EqualsF(keyValue, floatValue) && !MajorThanF(keyValue, floatValue) {
 							continue
 						}
 
@@ -127,14 +154,14 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 						}
 					}
 				}
-			case "<=":
-				aValue, ok := value.(float64)
+			case MinorEquals:
+				floatValue, ok := value.(float64)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Numerics[k]; ok {
-					for v, ids := range v {
-						if !Equals(v, aValue) && MajorThan(v, aValue) {
+				if keyValues, ok := d.Numerics[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if !EqualsF(keyValue, floatValue) && MajorThanF(keyValue, floatValue) {
 							continue
 						}
 
@@ -143,14 +170,14 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 						}
 					}
 				}
-			case "in list":
-				aValue, ok := value.([]float64)
+			case InList:
+				floatValues, ok := value.([]float64)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Numerics[k]; ok {
-					for v, ids := range v {
-						if !InList(v, aValue) {
+				if keyValues, ok := d.Numerics[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if !InListF(keyValue, floatValues) {
 							continue
 						}
 
@@ -159,14 +186,14 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 						}
 					}
 				}
-			case "not in list":
-				aValue, ok := value.([]float64)
+			case NotInList:
+				floatValues, ok := value.([]float64)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Numerics[k]; ok {
-					for v, ids := range v {
-						if InList(v, aValue) {
+				if keyValues, ok := d.Numerics[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if InListF(keyValue, floatValues) {
 							continue
 						}
 
@@ -176,23 +203,23 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			default:
-				log.Printf("incorrect operator '%s' for key '%s' of type '%s'", operator, key, t)
+				log.Printf("incorrect operator '%v' for key '%s' of type '%v'", operator, key, keyType)
 			}
-		case "string":
+		case String:
 			switch operator {
-			case "==":
-				aValue, ok := value.(string)
+			case Equals:
+				stringValue, ok := value.(string)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Strings[k]; ok {
-					for v, ids := range v {
-						if sensitive, ok := options["case-sensitive"]; ok && !sensitive {
-							v = strings.ToLower(v)
-							aValue = strings.ToLower(aValue)
+				if keyValues, ok := d.Strings[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if sensitive, ok := options[CaseSensitive]; ok && !sensitive {
+							keyValue = strings.ToLower(keyValue)
+							stringValue = strings.ToLower(stringValue)
 						}
 
-						if !Equals(v, aValue) {
+						if !EqualsF(keyValue, stringValue) {
 							continue
 						}
 
@@ -201,19 +228,19 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 						}
 					}
 				}
-			case "!=":
-				aValue, ok := value.(string)
+			case NotEquals:
+				stringValue, ok := value.(string)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Strings[k]; ok {
-					for v, ids := range v {
-						if sensitive, ok := options["case-sensitive"]; ok && !sensitive {
-							v = strings.ToLower(v)
-							aValue = strings.ToLower(aValue)
+				if keyValues, ok := d.Strings[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if sensitive, ok := options[CaseSensitive]; ok && !sensitive {
+							keyValue = strings.ToLower(keyValue)
+							stringValue = strings.ToLower(stringValue)
 						}
 
-						if Equals(v, aValue) {
+						if EqualsF(keyValue, stringValue) {
 							continue
 						}
 
@@ -222,14 +249,14 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 						}
 					}
 				}
-			case "regexp":
-				aValue, ok := value.(string)
+			case RegExp:
+				stringValue, ok := value.(string)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Strings[k]; ok {
-					for v, ids := range v {
-						if !MatchesRegExp(v, aValue) {
+				if keyValues, ok := d.Strings[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if m, e := MatchesRegExpF(keyValue, stringValue); e != nil && !m {
 							continue
 						}
 
@@ -238,14 +265,14 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 						}
 					}
 				}
-			case "not regexp":
-				aValue, ok := value.(string)
+			case NotRegExp:
+				stringValue, ok := value.(string)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Strings[k]; ok {
-					for v, ids := range v {
-						if MatchesRegExp(v, aValue) {
+				if keyValues, ok := d.Strings[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if m, e := MatchesRegExpF(keyValue, stringValue); e != nil || m {
 							continue
 						}
 
@@ -254,21 +281,24 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 						}
 					}
 				}
-			case "in list":
-				aValue, ok := value.([]string)
+			case InList:
+				stringValues, ok := value.([]string)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Strings[k]; ok {
-					for v, ids := range v {
-						if sensitive, ok := options["case-sensitive"]; ok && !sensitive {
-							v = strings.ToLower(v)
-							for k, v := range aValue {
-								aValue[k] = strings.ToLower(v)
+				if keyValues, ok := d.Strings[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if sensitive, ok := options[CaseSensitive]; ok && !sensitive {
+							keyValue = strings.ToLower(keyValue)
+
+							tmpStringValues := make([]string, 0, len(stringValues))
+							for _, v := range stringValues {
+								tmpStringValues = append(tmpStringValues, strings.ToLower(v))
 							}
+							stringValues = tmpStringValues
 						}
 
-						if !InList(v, aValue) {
+						if !InListF(keyValue, stringValues) {
 							continue
 						}
 
@@ -277,21 +307,24 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 						}
 					}
 				}
-			case "not in list":
-				aValue, ok := value.([]string)
+			case NotInList:
+				stringValues, ok := value.([]string)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Strings[k]; ok {
-					for v, ids := range v {
-						if sensitive, ok := options["case-sensitive"]; ok && !sensitive {
-							v = strings.ToLower(v)
-							for k, v := range aValue {
-								aValue[k] = strings.ToLower(v)
+				if keyValues, ok := d.Strings[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if sensitive, ok := options[CaseSensitive]; ok && !sensitive {
+							keyValue = strings.ToLower(keyValue)
+
+							tmpStringValues := make([]string, 0, len(stringValues))
+							for _, v := range stringValues {
+								tmpStringValues = append(tmpStringValues, strings.ToLower(v))
 							}
+							stringValues = tmpStringValues
 						}
 
-						if InList(v, aValue) {
+						if InListF(keyValue, stringValues) {
 							continue
 						}
 
@@ -300,14 +333,14 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 						}
 					}
 				}
-			case "in cidr":
-				aValue, ok := value.(string)
+			case InCIDR:
+				stringValue, ok := value.(string)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Strings[k]; ok {
-					for v, ids := range v {
-						if !InCIDR(v, aValue) {
+				if keyValues, ok := d.Strings[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if m, e := InCIDRF(keyValue, stringValue); e != nil || !m {
 							continue
 						}
 
@@ -316,14 +349,14 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 						}
 					}
 				}
-			case "not in cidr":
-				aValue, ok := value.(string)
+			case NotInCIDR:
+				stringValue, ok := value.(string)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Strings[k]; ok {
-					for v, ids := range v {
-						if InCIDR(v, aValue) {
+				if keyValues, ok := d.Strings[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if m, e := InCIDRF(keyValue, stringValue); e != nil || m {
 							continue
 						}
 
@@ -332,19 +365,19 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 						}
 					}
 				}
-			case "contains":
-				aValue, ok := value.(string)
+			case Contains:
+				stringValue, ok := value.(string)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Strings[k]; ok {
-					for v, ids := range v {
-						if sensitive, ok := options["case-sensitive"]; ok && !sensitive {
-							v = strings.ToLower(v)
-							value = strings.ToLower(aValue)
+				if keyValues, ok := d.Strings[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if sensitive, ok := options[CaseSensitive]; ok && !sensitive {
+							keyValue = strings.ToLower(keyValue)
+							stringValue = strings.ToLower(stringValue)
 						}
 
-						if !Contains(v, aValue) {
+						if !ContainsF(keyValue, stringValue) {
 							continue
 						}
 
@@ -353,19 +386,19 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 						}
 					}
 				}
-			case "not contains":
-				aValue, ok := value.(string)
+			case NotContains:
+				stringValue, ok := value.(string)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Strings[k]; ok {
-					for v, ids := range v {
-						if sensitive, ok := options["case-sensitive"]; ok && !sensitive {
-							v = strings.ToLower(v)
-							value = strings.ToLower(aValue)
+				if keyValues, ok := d.Strings[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if sensitive, ok := options[CaseSensitive]; ok && !sensitive {
+							keyValue = strings.ToLower(keyValue)
+							stringValue = strings.ToLower(stringValue)
 						}
 
-						if Contains(v, aValue) {
+						if ContainsF(keyValue, stringValue) {
 							continue
 						}
 
@@ -374,19 +407,19 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 						}
 					}
 				}
-			case "starts with":
-				aValue, ok := value.(string)
+			case StartsWith:
+				stringValue, ok := value.(string)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Strings[k]; ok {
-					for v, ids := range v {
-						if sensitive, ok := options["case-sensitive"]; ok && !sensitive {
-							v = strings.ToLower(v)
-							value = strings.ToLower(aValue)
+				if keyValues, ok := d.Strings[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if sensitive, ok := options[CaseSensitive]; ok && !sensitive {
+							keyValue = strings.ToLower(keyValue)
+							stringValue = strings.ToLower(stringValue)
 						}
 
-						if !StartsWith(v, aValue) {
+						if !StartsWithF(keyValue, stringValue) {
 							continue
 						}
 
@@ -395,19 +428,19 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 						}
 					}
 				}
-			case "not starts with":
-				aValue, ok := value.(string)
+			case NotStartsWith:
+				stringValue, ok := value.(string)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Strings[k]; ok {
-					for v, ids := range v {
-						if sensitive, ok := options["case-sensitive"]; ok && !sensitive {
-							v = strings.ToLower(v)
-							value = strings.ToLower(aValue)
+				if keyValues, ok := d.Strings[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if sensitive, ok := options[CaseSensitive]; ok && !sensitive {
+							keyValue = strings.ToLower(keyValue)
+							stringValue = strings.ToLower(stringValue)
 						}
 
-						if StartsWith(v, aValue) {
+						if StartsWithF(keyValue, stringValue) {
 							continue
 						}
 
@@ -416,19 +449,19 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 						}
 					}
 				}
-			case "ends with":
-				aValue, ok := value.(string)
+			case EndsWith:
+				stringValue, ok := value.(string)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Strings[k]; ok {
-					for v, ids := range v {
-						if sensitive, ok := options["case-sensitive"]; ok && !sensitive {
-							v = strings.ToLower(v)
-							value = strings.ToLower(aValue)
+				if keyValues, ok := d.Strings[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if sensitive, ok := options[CaseSensitive]; ok && !sensitive {
+							keyValue = strings.ToLower(keyValue)
+							stringValue = strings.ToLower(stringValue)
 						}
 
-						if !EndsWith(v, aValue) {
+						if !EndsWithF(keyValue, stringValue) {
 							continue
 						}
 
@@ -437,19 +470,19 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 						}
 					}
 				}
-			case "not ends with":
-				aValue, ok := value.(string)
+			case NotEndsWith:
+				stringValue, ok := value.(string)
 				if !ok {
 					return results
 				}
-				if v, ok := d.Strings[k]; ok {
-					for v, ids := range v {
-						if sensitive, ok := options["case-sensitive"]; ok && !sensitive {
-							v = strings.ToLower(v)
-							value = strings.ToLower(aValue)
+				if keyValues, ok := d.Strings[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if sensitive, ok := options[CaseSensitive]; ok && !sensitive {
+							keyValue = strings.ToLower(keyValue)
+							stringValue = strings.ToLower(stringValue)
 						}
 
-						if EndsWith(v, aValue) {
+						if EndsWithF(keyValue, stringValue) {
 							continue
 						}
 
@@ -459,24 +492,24 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			default:
-				log.Printf("incorrect operator '%s' for key '%s' of type '%s'", operator, key, t)
+				log.Printf("incorrect operator '%v' for key '%s' of type '%v'", operator, key, keyType)
 			}
-		case "boolean":
-			aValue, ok := value.(bool)
+		case Boolean:
+			boolValue, ok := value.(bool)
 			if !ok {
 				return results
 			}
 			switch operator {
-			case "==":
-				if ids, ok := d.Booleans[k][aValue]; ok {
+			case Equals:
+				if ids, ok := d.Booleans[dataFrameKey][boolValue]; ok {
 					for id := range ids {
 						results.Insert(d.Data[id])
 					}
 				}
-			case "!=":
-				if v, ok := d.Booleans[k]; ok {
-					for v, ids := range v {
-						if Equals(v, aValue) {
+			case NotEquals:
+				if keyValues, ok := d.Booleans[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if EqualsF(boolValue, keyValue) {
 							continue
 						}
 
@@ -486,7 +519,7 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 					}
 				}
 			default:
-				log.Printf("incorrect operator '%s' for key '%s' of type '%s'", operator, key, t)
+				log.Printf("incorrect operator '%v' for key '%s' of type '%v'", operator, key, keyType)
 			}
 		}
 	}
@@ -495,45 +528,45 @@ func (d *DataFrame) Filter(operator, key string, value interface{}, options map[
 }
 
 // FindFirstByKey returns the first row that matches a given key.
-func (d *DataFrame) FindFirstByKey(key string) (uuid.UUID, string, interface{}) {
+func (d *DataFrame) FindFirstByKey(key KeyName) (uuid.UUID, KeyName, interface{}) {
 	d.Locker.RLock()
 	defer d.Locker.RUnlock()
 
-	var keys = make(map[string]string)
+	var keys = make(map[KeyName]KeyType)
 
-	if Contains(key, "^") || Contains(key, "[") || Contains(key, "(") {
-		for k, t := range d.Keys {
-			if MatchesRegExp(k, key) {
-				keys[k] = t
+	if ContainsF(string(key), "^") || ContainsF(string(key), "[") || ContainsF(string(key), "(") {
+		for dataFrameKey, keyType := range d.Keys {
+			if m, e := MatchesRegExpF(string(dataFrameKey), string(key)); e == nil && m {
+				keys[dataFrameKey] = keyType
 			}
 		}
 	} else {
 		keys[key] = d.Keys[key]
 	}
 
-	for k, t := range keys {
-		switch t {
-		case "numeric":
-			if values, ok := d.Numerics[k]; ok {
-				for _, value := range values {
-					for row := range value {
-						return row, k, d.Data[row][k]
+	for dataFrameKey, keyType := range keys {
+		switch keyType {
+		case Numeric:
+			if keyValues, ok := d.Numerics[dataFrameKey]; ok {
+				for _, keyValue := range keyValues {
+					for row := range keyValue {
+						return row, dataFrameKey, d.Data[row][dataFrameKey]
 					}
 				}
 			}
-		case "string":
-			if values, ok := d.Strings[k]; ok {
-				for _, value := range values {
-					for row := range value {
-						return row, k, d.Data[row][k]
+		case String:
+			if keyValues, ok := d.Strings[dataFrameKey]; ok {
+				for _, keyValue := range keyValues {
+					for row := range keyValue {
+						return row, dataFrameKey, d.Data[row][dataFrameKey]
 					}
 				}
 			}
-		case "boolean":
-			if values, ok := d.Booleans[k]; ok {
-				for _, value := range values {
-					for row := range value {
-						return row, k, d.Data[row][k]
+		case Boolean:
+			if keyValues, ok := d.Booleans[dataFrameKey]; ok {
+				for _, keyValue := range keyValues {
+					for row := range keyValue {
+						return row, dataFrameKey, d.Data[row][dataFrameKey]
 					}
 				}
 			}
@@ -543,25 +576,28 @@ func (d *DataFrame) FindFirstByKey(key string) (uuid.UUID, string, interface{}) 
 	return uuid.Nil, key, new(DataFrame)
 }
 
-func Equals(left, right interface{}) bool {
+func EqualsF[v float64 | string | bool](left, right v) bool {
 	return left == right
 }
 
-func MatchesRegExp(value, regExp string) bool {
+func MatchesRegExpF(value, regExp string) (bool, error) {
 	re, err := regexp.Compile(regExp)
-	if err == nil {
-		if re.MatchString(value) {
-			return true
-		}
+	if err != nil {
+		return false, err
 	}
-	return false
+
+	if re.MatchString(value) {
+		return true, nil
+	}
+
+	return false, nil
 }
 
-func MajorThan(left, right float64) bool {
+func MajorThanF(left, right float64) bool {
 	return left > right
 }
 
-func InList[v float64 | string, result bool](value v, list []v) result {
+func InListF[v float64 | string](value v, list []v) bool {
 	for _, element := range list {
 		if element == value {
 			return true
@@ -570,27 +606,30 @@ func InList[v float64 | string, result bool](value v, list []v) result {
 	return false
 }
 
-func InCIDR(value, cidr string) bool {
+func InCIDRF(value, cidr string) (bool, error) {
 	_, subnet, err := net.ParseCIDR(cidr)
-	if err == nil {
-		ip := net.ParseIP(value)
-		if ip != nil {
-			if subnet.Contains(ip) {
-				return true
-			}
+	if err != nil {
+		return false, err
+	}
+
+	ip := net.ParseIP(value)
+	if ip != nil {
+		if subnet.Contains(ip) {
+			return true, nil
 		}
 	}
-	return false
+
+	return false, nil
 }
 
-func Contains(value, substring string) bool {
+func ContainsF(value, substring string) bool {
 	return strings.Contains(value, substring)
 }
 
-func StartsWith(value, prefix string) bool {
+func StartsWithF(value, prefix string) bool {
 	return strings.HasPrefix(value, prefix)
 }
 
-func EndsWith(value, suffix string) bool {
+func EndsWithF(value, suffix string) bool {
 	return strings.HasSuffix(value, suffix)
 }

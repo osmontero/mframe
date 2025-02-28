@@ -52,7 +52,7 @@ func TestInsertFindAndDelete(t *testing.T) {
 
 	go cache.Stats("agents")
 
-	kvs := map[string]string{
+	kvs := map[mframe.KeyName]string{
 		"001": "value1",
 		"002": "value2",
 		"004": "value3",
@@ -68,7 +68,7 @@ func TestInsertFindAndDelete(t *testing.T) {
 
 	for k, v := range kvs {
 		cache.Insert(
-			map[string]interface{}{
+			map[mframe.KeyName]interface{}{
 				k: v,
 			},
 		)
@@ -93,7 +93,7 @@ func TestToSlice(t *testing.T) {
 	var cache mframe.DataFrame
 	cache.Init(24 * time.Hour)
 
-	kvs := map[string]string{
+	kvs := map[mframe.KeyName]string{
 		"001": "value1",
 		"002": "value2",
 		"004": "value3",
@@ -109,7 +109,7 @@ func TestToSlice(t *testing.T) {
 
 	for k, v := range kvs {
 		cache.Insert(
-			map[string]interface{}{
+			map[mframe.KeyName]interface{}{
 				k: v,
 			},
 		)
@@ -138,7 +138,7 @@ func TestSliceOf(t *testing.T) {
 	var cache mframe.DataFrame
 	cache.Init(24 * time.Hour)
 
-	kvs := map[string]string{
+	kvs := map[mframe.KeyName]string{
 		"001": "value1",
 		"002": "value2",
 		"004": "value3",
@@ -154,7 +154,7 @@ func TestSliceOf(t *testing.T) {
 
 	for k, v := range kvs {
 		cache.Insert(
-			map[string]interface{}{
+			map[mframe.KeyName]interface{}{
 				k: v,
 			},
 		)
@@ -181,7 +181,7 @@ func TestSliceOfFloat64(t *testing.T) {
 	var cache mframe.DataFrame
 	cache.Init(24 * time.Hour)
 
-	kvs := map[string]float64{
+	kvs := map[mframe.KeyName]float64{
 		"001": 1.0,
 		"002": 2.0,
 		"004": 3.0,
@@ -197,7 +197,7 @@ func TestSliceOfFloat64(t *testing.T) {
 
 	for k, v := range kvs {
 		cache.Insert(
-			map[string]interface{}{
+			map[mframe.KeyName]interface{}{
 				k: v,
 			},
 		)

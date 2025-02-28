@@ -9,111 +9,115 @@ import (
 	"github.com/google/uuid"
 )
 
-func (d *DataFrame) index(f map[string]interface{}, k string, id uuid.UUID, r *Row) {
-	for key, value := range f {
-		if k != "" {
-			key = fmt.Sprintf("%s.%s", k, key)
+func (d *DataFrame) index(kv map[KeyName]interface{}, wrapKey KeyName, id uuid.UUID, row *Row) {
+	for kvKey, kvValue := range kv {
+		if wrapKey != "" {
+			kvKey = KeyName(fmt.Sprintf("%s.%s", wrapKey, kvKey))
 		}
 
-		t := reflect.TypeOf(value)
-		switch t.String() {
+		kvValueType := reflect.TypeOf(kvValue)
+		if kvValueType == nil {
+			continue
+		}
+
+		switch kvValueType.String() {
 		case "map[string]interface {}":
-			n := value.(map[string]interface{})
-			d.index(n, key, id, r)
+			newKv := kvValue.(map[KeyName]interface{})
+			d.index(newKv, kvKey, id, row)
 		case "[]interface {}":
-			for k, v := range value.([]interface{}) {
-				n := map[string]interface{}{fmt.Sprint(k): v}
-				d.index(n, key, id, r)
+			for listKey, listValue := range kvValue.([]interface{}) {
+				newKv := map[KeyName]interface{}{KeyName(fmt.Sprint(listKey)): listValue}
+				d.index(newKv, kvKey, id, row)
 			}
 		case "string":
-			d.addMapping(key, "string")
+			d.addMapping(kvKey, String)
 
-			tmpR := *r
-			tmpR[key] = value
+			tmpR := *row
+			tmpR[kvKey] = kvValue
 
-			if len(d.Strings[key]) == 0 {
-				d.Strings[key] = make(map[string]map[uuid.UUID]bool)
+			if len(d.Strings[kvKey]) == 0 {
+				d.Strings[kvKey] = make(map[string]map[uuid.UUID]bool)
 			}
 
-			if len(d.Strings[key][value.(string)]) == 0 {
-				d.Strings[key][value.(string)] = make(map[uuid.UUID]bool)
+			if len(d.Strings[kvKey][kvValue.(string)]) == 0 {
+				d.Strings[kvKey][kvValue.(string)] = make(map[uuid.UUID]bool)
 			}
 
-			d.Strings[key][value.(string)][id] = false
+			d.Strings[kvKey][kvValue.(string)][id] = false
 		case "float64":
-			d.num(key, value.(float64), id, r)
+			d.num(kvKey, kvValue.(float64), id, row)
 		case "int64":
-			d.num(key, float64(value.(int64)), id, r)
+			d.num(kvKey, float64(kvValue.(int64)), id, row)
 		case "float":
-			d.num(key, float64(value.(float32)), id, r)
+			d.num(kvKey, float64(kvValue.(float32)), id, row)
 		case "int":
-			d.num(key, float64(value.(int)), id, r)
+			d.num(kvKey, float64(kvValue.(int)), id, row)
 		case "bool":
-			d.addMapping(key, "boolean")
+			d.addMapping(kvKey, Boolean)
 
-			tmpR := *r
-			tmpR[key] = value
+			tmpR := *row
+			tmpR[kvKey] = kvValue
 
-			if len(d.Booleans[key]) == 0 {
-				d.Booleans[key] = make(map[bool]map[uuid.UUID]bool)
+			if len(d.Booleans[kvKey]) == 0 {
+				d.Booleans[kvKey] = make(map[bool]map[uuid.UUID]bool)
 			}
 
-			if len(d.Booleans[key][value.(bool)]) == 0 {
-				d.Booleans[key][value.(bool)] = make(map[uuid.UUID]bool)
+			if len(d.Booleans[kvKey][kvValue.(bool)]) == 0 {
+				d.Booleans[kvKey][kvValue.(bool)] = make(map[uuid.UUID]bool)
 			}
 
-			d.Booleans[key][value.(bool)][id] = false
+			d.Booleans[kvKey][kvValue.(bool)][id] = false
 		case "uuid.UUID":
-			d.addMapping(key, "string")
+			d.addMapping(kvKey, String)
 
-			tmpR := *r
-			tmpR[key] = value
+			tmpR := *row
+			tmpR[kvKey] = kvValue
 
-			if len(d.Strings[key]) == 0 {
-				d.Strings[key] = make(map[string]map[uuid.UUID]bool)
+			if len(d.Strings[kvKey]) == 0 {
+				d.Strings[kvKey] = make(map[string]map[uuid.UUID]bool)
 			}
 
-			if len(d.Strings[key][value.(string)]) == 0 {
-				d.Strings[key][value.(string)] = make(map[uuid.UUID]bool)
+			if len(d.Strings[kvKey][kvValue.(string)]) == 0 {
+				d.Strings[kvKey][kvValue.(string)] = make(map[uuid.UUID]bool)
 			}
 
-			d.Strings[key][value.(string)][id] = false
+			d.Strings[kvKey][kvValue.(string)][id] = false
 		case "time.Time":
-			d.addMapping(key, "string")
+			d.addMapping(kvKey, String)
 
-			tmpR := *r
-			tmpR[key] = value
+			tmpR := *row
+			tmpR[kvKey] = kvValue
 
-			if len(d.Strings[key]) == 0 {
-				d.Strings[key] = make(map[string]map[uuid.UUID]bool)
+			if len(d.Strings[kvKey]) == 0 {
+				d.Strings[kvKey] = make(map[string]map[uuid.UUID]bool)
 			}
 
-			if len(d.Strings[key][value.(string)]) == 0 {
-				d.Strings[key][value.(string)] = make(map[uuid.UUID]bool)
+			if len(d.Strings[kvKey][kvValue.(string)]) == 0 {
+				d.Strings[kvKey][kvValue.(string)] = make(map[uuid.UUID]bool)
 			}
 
-			d.Strings[key][value.(string)][id] = false
+			d.Strings[kvKey][kvValue.(string)][id] = false
 		default:
-			log.Printf("unknown field type: %s", t.String())
+			log.Printf("unknown field type: %s", kvValueType.String())
 		}
 	}
 }
 
-func (d *DataFrame) num(key string, value float64, id uuid.UUID, r *Row) {
-	d.addMapping(key, "numeric")
+func (d *DataFrame) num(keyName KeyName, value float64, id uuid.UUID, row *Row) {
+	d.addMapping(keyName, Numeric)
 
-	tmpR := *r
-	tmpR[key] = value
+	tmpR := *row
+	tmpR[keyName] = value
 
-	if len(d.Numerics[key]) == 0 {
-		d.Numerics[key] = make(map[float64]map[uuid.UUID]bool)
+	if len(d.Numerics[keyName]) == 0 {
+		d.Numerics[keyName] = make(map[float64]map[uuid.UUID]bool)
 	}
 
-	if len(d.Numerics[key][value]) == 0 {
-		d.Numerics[key][value] = make(map[uuid.UUID]bool)
+	if len(d.Numerics[keyName][value]) == 0 {
+		d.Numerics[keyName][value] = make(map[uuid.UUID]bool)
 	}
 
-	d.Numerics[key][value][id] = false
+	d.Numerics[keyName][value][id] = false
 }
 
 // Insert adds a new row to the DataFrame with the given data.
@@ -121,7 +125,7 @@ func (d *DataFrame) num(key string, value float64, id uuid.UUID, r *Row) {
 // The function indexes the data and adds it to the DataFrame.
 // The function also generates a new UUID for the row and sets its expiration time.
 // The function is thread-safe and uses a mutex to protect the DataFrame from concurrent writes.
-func (d *DataFrame) Insert(data map[string]interface{}) {
+func (d *DataFrame) Insert(data map[KeyName]interface{}) {
 	d.Locker.Lock()
 	defer d.Locker.Unlock()
 
@@ -132,11 +136,11 @@ func (d *DataFrame) Insert(data map[string]interface{}) {
 	d.ExpireAt[id] = time.Now().UTC().Add(d.TTL)
 }
 
-func (d *DataFrame) addMapping(key, kind string) {
-	if k, ok := d.Keys[key]; ok && k != kind {
-		log.Printf("cannot map key '%s' as '%s' because it is already mapped as type '%s'", key, kind, d.Keys[key])
+func (d *DataFrame) addMapping(keyName KeyName, keyType KeyType) {
+	if key, ok := d.Keys[keyName]; ok && key != keyType {
+		log.Printf("cannot map key '%s' as '%v' because it is already mapped as type '%v'", keyName, keyType, d.Keys[keyName])
 		return
 	}
 
-	d.Keys[key] = kind
+	d.Keys[keyName] = keyType
 }

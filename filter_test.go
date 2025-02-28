@@ -11,7 +11,7 @@ func TestFilter(t *testing.T) {
 	var cache mframe.DataFrame
 	cache.Init(24 * time.Hour)
 
-	kvs := []map[string]interface{}{
+	kvs := []map[mframe.KeyName]interface{}{
 		{"id": 1, "name": "John", "age": 25},
 		{"id": 2, "name": "Jane", "age": 30},
 		{"id": 3, "name": "John", "age": 35},
@@ -31,19 +31,19 @@ func TestFilter(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		operator string
-		key      string
+		operator mframe.Operator
+		key      mframe.KeyName
 		value    interface{}
-		options  map[string]bool
-		want     []map[string]interface{}
+		options  map[mframe.FilterOption]bool
+		want     []map[mframe.KeyName]interface{}
 	}{
 		{
 			name:     "Equal",
-			operator: "==",
+			operator: mframe.Equals,
 			key:      "name",
 			value:    "John",
 			options:  nil,
-			want: []map[string]interface{}{
+			want: []map[mframe.KeyName]interface{}{
 				{"id": 1, "name": "John", "age": 25},
 				{"id": 3, "name": "John", "age": 35},
 				{"id": 5, "name": "John", "age": 45},
@@ -51,33 +51,33 @@ func TestFilter(t *testing.T) {
 		},
 		{
 			name:     "NotEqual",
-			operator: "!=",
+			operator: mframe.NotEquals,
 			key:      "name",
 			value:    "John",
 			options:  nil,
-			want: []map[string]interface{}{
+			want: []map[mframe.KeyName]interface{}{
 				{"id": 2, "name": "Jane", "age": 30},
 				{"id": 4, "name": "Jane", "age": 40},
 			},
 		},
 		{
 			name:     "GreaterThan",
-			operator: ">",
+			operator: mframe.Major,
 			key:      "age",
 			value:    35.0,
 			options:  nil,
-			want: []map[string]interface{}{
+			want: []map[mframe.KeyName]interface{}{
 				{"id": 4, "name": "Jane", "age": 40},
 				{"id": 5, "name": "John", "age": 45},
 			},
 		},
 		{
 			name:     "LessThan",
-			operator: "<",
+			operator: mframe.Minor,
 			key:      "age",
 			value:    35.0,
 			options:  nil,
-			want: []map[string]interface{}{
+			want: []map[mframe.KeyName]interface{}{
 				{"id": 1, "name": "John", "age": 25},
 				{"id": 2, "name": "Jane", "age": 30},
 				{"id": 3, "name": "John", "age": 35},
@@ -85,11 +85,11 @@ func TestFilter(t *testing.T) {
 		},
 		{
 			name:     "GreaterThanOrEqual",
-			operator: ">=",
+			operator: mframe.MajorEquals,
 			key:      "age",
 			value:    35.0,
 			options:  nil,
-			want: []map[string]interface{}{
+			want: []map[mframe.KeyName]interface{}{
 				{"id": 3, "name": "John", "age": 35},
 				{"id": 4, "name": "Jane", "age": 40},
 				{"id": 5, "name": "John", "age": 45},
@@ -97,11 +97,11 @@ func TestFilter(t *testing.T) {
 		},
 		{
 			name:     "LessThanOrEqual",
-			operator: "<=",
+			operator: mframe.MinorEquals,
 			key:      "age",
 			value:    35.0,
 			options:  nil,
-			want: []map[string]interface{}{
+			want: []map[mframe.KeyName]interface{}{
 				{"id": 1, "name": "John", "age": 25},
 				{"id": 2, "name": "Jane", "age": 30},
 				{"id": 3, "name": "John", "age": 35},
@@ -109,22 +109,22 @@ func TestFilter(t *testing.T) {
 		},
 		{
 			name:     "InList",
-			operator: "in list",
+			operator: mframe.InList,
 			key:      "age",
 			value:    []float64{30.0, 35.0},
 			options:  nil,
-			want: []map[string]interface{}{
+			want: []map[mframe.KeyName]interface{}{
 				{"id": 2, "name": "Jane", "age": 30},
 				{"id": 3, "name": "John", "age": 35},
 			},
 		},
 		{
 			name:     "NotInList",
-			operator: "not in list",
+			operator: mframe.NotInList,
 			key:      "age",
 			value:    []float64{30.0, 35.0},
 			options:  nil,
-			want: []map[string]interface{}{
+			want: []map[mframe.KeyName]interface{}{
 				{"id": 1, "name": "John", "age": 25},
 				{"id": 4, "name": "Jane", "age": 40},
 				{"id": 5, "name": "John", "age": 45},
@@ -132,22 +132,22 @@ func TestFilter(t *testing.T) {
 		},
 		{
 			name:     "CaseInsensitive",
-			operator: "==",
+			operator: mframe.Equals,
 			key:      "name",
 			value:    "jane",
-			options:  map[string]bool{"case-sensitive": false},
-			want: []map[string]interface{}{
+			options:  map[mframe.FilterOption]bool{mframe.CaseSensitive: false},
+			want: []map[mframe.KeyName]interface{}{
 				{"id": 2, "name": "Jane", "age": 30},
 				{"id": 4, "name": "Jane", "age": 40},
 			},
 		},
 		{
 			name:     "RegExp",
-			operator: "regexp",
+			operator: mframe.RegExp,
 			key:      "name",
 			value:    "^J",
 			options:  nil,
-			want: []map[string]interface{}{
+			want: []map[mframe.KeyName]interface{}{
 				{"id": 1, "name": "John", "age": 25},
 				{"id": 2, "name": "Jane", "age": 30},
 				{"id": 3, "name": "John", "age": 35},
@@ -157,11 +157,11 @@ func TestFilter(t *testing.T) {
 		},
 		{
 			name:     "NotRegExp",
-			operator: "not regexp",
+			operator: mframe.NotRegExp,
 			key:      "name",
 			value:    "^K",
 			options:  nil,
-			want: []map[string]interface{}{
+			want: []map[mframe.KeyName]interface{}{
 				{"id": 1, "name": "John", "age": 25},
 				{"id": 2, "name": "Jane", "age": 30},
 				{"id": 3, "name": "John", "age": 35},
@@ -171,11 +171,11 @@ func TestFilter(t *testing.T) {
 		},
 		{
 			name:     "InCIDR",
-			operator: "in cidr",
+			operator: mframe.InCIDR,
 			key:      "ip",
 			value:    "192.168.1.0/24",
 			options:  nil,
-			want: []map[string]interface{}{
+			want: []map[mframe.KeyName]interface{}{
 				{"id": 1, "ip": "192.168.1.1"},
 				{"id": 2, "ip": "192.168.1.2"},
 				{"id": 3, "ip": "192.168.1.3"},
@@ -183,11 +183,11 @@ func TestFilter(t *testing.T) {
 		},
 		{
 			name:     "NotInCIDR",
-			operator: "not in cidr",
+			operator: mframe.NotInCIDR,
 			key:      "ip",
 			value:    "192.168.1.0/24",
 			options:  nil,
-			want: []map[string]interface{}{
+			want: []map[mframe.KeyName]interface{}{
 				{"id": 9, "ip": "10.168.1.1"},
 				{"id": 10, "ip": "10.168.1.2"},
 				{"id": 11, "ip": "10.168.1.3"},
@@ -195,11 +195,11 @@ func TestFilter(t *testing.T) {
 		},
 		{
 			name:     "Contains",
-			operator: "contains",
+			operator: mframe.Contains,
 			key:      "name",
 			value:    "oh",
 			options:  nil,
-			want: []map[string]interface{}{
+			want: []map[mframe.KeyName]interface{}{
 				{"id": 1, "name": "John", "age": 25},
 				{"id": 3, "name": "John", "age": 35},
 				{"id": 5, "name": "John", "age": 45},
@@ -207,22 +207,22 @@ func TestFilter(t *testing.T) {
 		},
 		{
 			name:     "NotContains",
-			operator: "not contains",
+			operator: mframe.NotContains,
 			key:      "name",
 			value:    "oh",
 			options:  nil,
-			want: []map[string]interface{}{
+			want: []map[mframe.KeyName]interface{}{
 				{"id": 2, "name": "Jane", "age": 30},
 				{"id": 4, "name": "Jane", "age": 40},
 			},
 		},
 		{
 			name:     "StartsWith",
-			operator: "starts with",
+			operator: mframe.StartsWith,
 			key:      "name",
 			value:    "J",
 			options:  nil,
-			want: []map[string]interface{}{
+			want: []map[mframe.KeyName]interface{}{
 				{"id": 1, "name": "John", "age": 25},
 				{"id": 2, "name": "Jane", "age": 30},
 				{"id": 3, "name": "John", "age": 35},
@@ -232,11 +232,11 @@ func TestFilter(t *testing.T) {
 		},
 		{
 			name:     "NotStartsWith",
-			operator: "not starts with",
+			operator: mframe.NotStartsWith,
 			key:      "name",
 			value:    "K",
 			options:  nil,
-			want: []map[string]interface{}{
+			want: []map[mframe.KeyName]interface{}{
 				{"id": 1, "name": "John", "age": 25},
 				{"id": 2, "name": "Jane", "age": 30},
 				{"id": 3, "name": "John", "age": 35},
@@ -246,11 +246,11 @@ func TestFilter(t *testing.T) {
 		},
 		{
 			name:     "EndsWith",
-			operator: "ends with",
+			operator: mframe.EndsWith,
 			key:      "name",
 			value:    "n",
 			options:  nil,
-			want: []map[string]interface{}{
+			want: []map[mframe.KeyName]interface{}{
 				{"id": 1, "name": "John", "age": 25},
 				{"id": 3, "name": "John", "age": 35},
 				{"id": 5, "name": "John", "age": 45},
@@ -258,11 +258,11 @@ func TestFilter(t *testing.T) {
 		},
 		{
 			name:     "NotEndsWith",
-			operator: "not ends with",
+			operator: mframe.NotEndsWith,
 			key:      "name",
 			value:    "n",
 			options:  nil,
-			want: []map[string]interface{}{
+			want: []map[mframe.KeyName]interface{}{
 				{"id": 2, "name": "Jane", "age": 30},
 				{"id": 4, "name": "Jane", "age": 40},
 			},
