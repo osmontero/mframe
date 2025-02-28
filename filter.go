@@ -1,7 +1,3 @@
-// Package mframe provides a DataFrame struct and methods to manipulate it.
-// This file contains the Filter and FindFirstByKey methods.
-// The Filter method filters the DataFrame based on a given operator, key, value, and options.
-// The FindFirstByKey method returns the first row that matches a given key.
 package mframe
 
 import (
@@ -12,6 +8,7 @@ import (
 	"strings"
 )
 
+// Operator defines a set of comparison or matching operations that can be applied in conditional logic.
 type Operator int
 
 const (
@@ -35,8 +32,12 @@ const (
 	NotEndsWith   Operator = 18
 )
 
-// Filter method filters a DataFrame based on criteria such as equality, comparison,
-// list inclusion, regular expressions, and CIDR matching.
+// Filter applies a filtering operation to the DataFrame based on the operator, key, value, and optional parameters.
+// operator specifies the condition (e.g., Equals, NotEquals) to filter data.
+// key indicates the column to filter on.
+// value represents the target value(s) used for filtering.
+// options is an optional map to specify additional filter settings (e.g., case sensitivity).
+// Returns a new DataFrame containing the filtered rows.
 //
 // Available Operators:
 // - Equals: Available for numeric, string and bool types.
@@ -527,7 +528,7 @@ func (d *DataFrame) Filter(operator Operator, key KeyName, value any, options ma
 	return results
 }
 
-// FindFirstByKey returns the first row that matches a given key.
+// FindFirstByKey retrieves the first occurrence of a key within a DataFrame and returns its UUID, key name, and value.
 func (d *DataFrame) FindFirstByKey(key KeyName) (uuid.UUID, KeyName, interface{}) {
 	d.Locker.RLock()
 	defer d.Locker.RUnlock()
@@ -573,13 +574,15 @@ func (d *DataFrame) FindFirstByKey(key KeyName) (uuid.UUID, KeyName, interface{}
 		}
 	}
 
-	return uuid.Nil, key, new(DataFrame)
+	return uuid.Nil, "", nil
 }
 
+// EqualsF compares two values of type float64, string, or bool and returns true if they are equal, otherwise false.
 func EqualsF[v float64 | string | bool](left, right v) bool {
 	return left == right
 }
 
+// MatchesRegExpF checks if a given string matches a specified regular expression and returns a boolean or an error.
 func MatchesRegExpF(value, regExp string) (bool, error) {
 	re, err := regexp.Compile(regExp)
 	if err != nil {
@@ -593,10 +596,12 @@ func MatchesRegExpF(value, regExp string) (bool, error) {
 	return false, nil
 }
 
+// MajorThanF compares two float64 numbers and returns true if the first number is greater than the second.
 func MajorThanF(left, right float64) bool {
 	return left > right
 }
 
+// InListF checks if a given value of type float64 or string is present in the provided list and returns true if found.
 func InListF[v float64 | string](value v, list []v) bool {
 	for _, element := range list {
 		if element == value {
@@ -606,6 +611,7 @@ func InListF[v float64 | string](value v, list []v) bool {
 	return false
 }
 
+// InCIDRF checks if an IP address (value) belongs to a given CIDR range and returns a boolean. Errors on invalid CIDR.
 func InCIDRF(value, cidr string) (bool, error) {
 	_, subnet, err := net.ParseCIDR(cidr)
 	if err != nil {
@@ -622,14 +628,17 @@ func InCIDRF(value, cidr string) (bool, error) {
 	return false, nil
 }
 
+// ContainsF checks if the `substring` is present within the `value` and returns true if found, otherwise false.
 func ContainsF(value, substring string) bool {
 	return strings.Contains(value, substring)
 }
 
+// StartsWithF checks if the given string 'value' starts with the specified 'prefix' and returns true if it does.
 func StartsWithF(value, prefix string) bool {
 	return strings.HasPrefix(value, prefix)
 }
 
+// EndsWithF checks if the given string 'value' ends with the specified 'suffix'. Returns true if it does, otherwise false.
 func EndsWithF(value, suffix string) bool {
 	return strings.HasSuffix(value, suffix)
 }

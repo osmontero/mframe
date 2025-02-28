@@ -1,6 +1,6 @@
 package mframe
 
-// Append the rows of a DataFrame to another DataFrame, adding a key column with the specified key value.
+// Append adds all rows from the given DataFrame to the current DataFrame with the specified key.
 func (d *DataFrame) Append(df *DataFrame, key string) {
 	df.Locker.RLock()
 	defer df.Locker.RUnlock()

@@ -1,7 +1,6 @@
 package mframe
 
-// ToSlice returns a slice of maps representing the DataFrame's data.
-// Each map contains the column names as keys and the corresponding row values as values.
+// ToSlice converts the DataFrame into a slice of Row, preserving the order of rows in the DataFrame.
 func (d *DataFrame) ToSlice() []Row {
 	var result = make([]Row, 0, 1)
 
@@ -12,7 +11,8 @@ func (d *DataFrame) ToSlice() []Row {
 	return result
 }
 
-// SliceOf returns a slice of interface{} representing the values of a specific field in the DataFrame.
+// SliceOf returns a slice of interface values corresponding to the specified field
+// (KeyName) from the DataFrame's data rows.
 func (d *DataFrame) SliceOf(field KeyName) []interface{} {
 	var list []interface{}
 	for _, v := range d.Data {
@@ -26,8 +26,7 @@ func (d *DataFrame) SliceOf(field KeyName) []interface{} {
 	return list
 }
 
-// SliceOfFloat64 returns a slice of float64 representing the values of a specific field in the DataFrame.
-// If a value cannot be converted to float64, it is skipped.
+// SliceOfFloat64 extracts and returns a slice of float64 values from the specified field in the DataFrame.
 func (d *DataFrame) SliceOfFloat64(field KeyName) []float64 {
 	list := d.SliceOf(field)
 

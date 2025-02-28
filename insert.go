@@ -9,6 +9,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// index processes key-value pairs recursively to index data into the DataFrame,
+// handling various data types and nested structures.
 func (d *DataFrame) index(kv map[KeyName]interface{}, wrapKey KeyName, id uuid.UUID, row *Row) {
 	for kvKey, kvValue := range kv {
 		if wrapKey != "" {
@@ -30,7 +32,11 @@ func (d *DataFrame) index(kv map[KeyName]interface{}, wrapKey KeyName, id uuid.U
 				d.index(newKv, kvKey, id, row)
 			}
 		case "string":
-			d.addMapping(kvKey, String)
+			err := d.addMapping(kvKey, String)
+			if err != nil {
+				log.Printf("error adding mapping for key '%s': %s", kvKey, err.Error())
+				continue
+			}
 
 			tmpR := *row
 			tmpR[kvKey] = kvValue
@@ -53,7 +59,11 @@ func (d *DataFrame) index(kv map[KeyName]interface{}, wrapKey KeyName, id uuid.U
 		case "int":
 			d.num(kvKey, float64(kvValue.(int)), id, row)
 		case "bool":
-			d.addMapping(kvKey, Boolean)
+			err := d.addMapping(kvKey, Boolean)
+			if err != nil {
+				log.Printf("error adding mapping for key '%s': %s", kvKey, err.Error())
+				continue
+			}
 
 			tmpR := *row
 			tmpR[kvKey] = kvValue
@@ -68,7 +78,11 @@ func (d *DataFrame) index(kv map[KeyName]interface{}, wrapKey KeyName, id uuid.U
 
 			d.Booleans[kvKey][kvValue.(bool)][id] = false
 		case "uuid.UUID":
-			d.addMapping(kvKey, String)
+			err := d.addMapping(kvKey, String)
+			if err != nil {
+				log.Printf("error adding mapping for key '%s': %s", kvKey, err.Error())
+				continue
+			}
 
 			tmpR := *row
 			tmpR[kvKey] = kvValue
@@ -83,7 +97,11 @@ func (d *DataFrame) index(kv map[KeyName]interface{}, wrapKey KeyName, id uuid.U
 
 			d.Strings[kvKey][kvValue.(string)][id] = false
 		case "time.Time":
-			d.addMapping(kvKey, String)
+			err := d.addMapping(kvKey, String)
+			if err != nil {
+				log.Printf("error adding mapping for key '%s': %s", kvKey, err.Error())
+				continue
+			}
 
 			tmpR := *row
 			tmpR[kvKey] = kvValue
@@ -103,8 +121,13 @@ func (d *DataFrame) index(kv map[KeyName]interface{}, wrapKey KeyName, id uuid.U
 	}
 }
 
+// num adds a numeric value to the DataFrame using the specified key, value, id, and updates the provided row.
 func (d *DataFrame) num(keyName KeyName, value float64, id uuid.UUID, row *Row) {
-	d.addMapping(keyName, Numeric)
+	err := d.addMapping(keyName, Numeric)
+	if err != nil {
+		log.Printf("error adding mapping for key '%s': %s", keyName, err.Error())
+		return
+	}
 
 	tmpR := *row
 	tmpR[keyName] = value
@@ -120,11 +143,8 @@ func (d *DataFrame) num(keyName KeyName, value float64, id uuid.UUID, row *Row) 
 	d.Numerics[keyName][value][id] = false
 }
 
-// Insert adds a new row to the DataFrame with the given data.
-// The data is a map of string keys to interface{} values.
-// The function indexes the data and adds it to the DataFrame.
-// The function also generates a new UUID for the row and sets its expiration time.
-// The function is thread-safe and uses a mutex to protect the DataFrame from concurrent writings.
+// Insert adds a new row to the DataFrame using the provided data,
+// generating a unique ID and applying the configured TTL.
 func (d *DataFrame) Insert(data map[KeyName]interface{}) {
 	d.Locker.Lock()
 	defer d.Locker.Unlock()
@@ -136,11 +156,14 @@ func (d *DataFrame) Insert(data map[KeyName]interface{}) {
 	d.ExpireAt[id] = time.Now().UTC().Add(d.TTL)
 }
 
-func (d *DataFrame) addMapping(keyName KeyName, keyType KeyType) {
+// addMapping maps a keyName to a specified keyType in the DataFrame.
+// Returns an error if the keyName already has a different keyType.
+func (d *DataFrame) addMapping(keyName KeyName, keyType KeyType) error {
 	if key, ok := d.Keys[keyName]; ok && key != keyType {
-		log.Printf("cannot map key '%s' as '%v' because it is already mapped as type '%v'", keyName, keyType, d.Keys[keyName])
-		return
+		return fmt.Errorf("cannot map key '%s' as '%v' because it is already mapped as type '%v'", keyName, keyType, d.Keys[keyName])
 	}
 
 	d.Keys[keyName] = keyType
+
+	return nil
 }
