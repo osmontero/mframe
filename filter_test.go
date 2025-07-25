@@ -80,7 +80,6 @@ func TestFilter(t *testing.T) {
 			want: []map[mframe.KeyName]interface{}{
 				{"id": 1, "name": "John", "age": 25},
 				{"id": 2, "name": "Jane", "age": 30},
-				{"id": 3, "name": "John", "age": 35},
 			},
 		},
 		{
@@ -265,6 +264,29 @@ func TestFilter(t *testing.T) {
 			want: []map[mframe.KeyName]interface{}{
 				{"id": 2, "name": "Jane", "age": 30},
 				{"id": 4, "name": "Jane", "age": 40},
+			},
+		},
+		{
+			name:     "Between",
+			operator: mframe.Between,
+			key:      "age",
+			value:    []float64{30.0, 40.0},
+			options:  nil,
+			want: []map[mframe.KeyName]interface{}{
+				{"id": 2, "name": "Jane", "age": 30},
+				{"id": 3, "name": "John", "age": 35},
+				{"id": 4, "name": "Jane", "age": 40},
+			},
+		},
+		{
+			name:     "NotBetween",
+			operator: mframe.NotBetween,
+			key:      "age",
+			value:    []float64{30.0, 40.0},
+			options:  nil,
+			want: []map[mframe.KeyName]interface{}{
+				{"id": 1, "name": "John", "age": 25},
+				{"id": 5, "name": "John", "age": 45},
 			},
 		},
 	}

@@ -14,10 +14,10 @@ type Operator int
 const (
 	Equals        Operator = 1
 	NotEquals     Operator = 2
-	Major         Operator = 3
-	Minor         Operator = 4
-	MajorEquals   Operator = 5
-	MinorEquals   Operator = 6
+	Major         Operator = 3 // Deprecated: Use Greater instead
+	Minor         Operator = 4 // Deprecated: Use Less instead
+	MajorEquals   Operator = 5 // Deprecated: Use GreaterOrEqual instead
+	MinorEquals   Operator = 6 // Deprecated: Use LessOrEqual instead
 	InList        Operator = 7
 	NotInList     Operator = 8
 	RegExp        Operator = 9
@@ -30,6 +30,14 @@ const (
 	NotStartsWith Operator = 16
 	EndsWith      Operator = 17
 	NotEndsWith   Operator = 18
+	Between       Operator = 19
+	NotBetween    Operator = 20
+
+	// New names for clarity
+	Greater        = Major
+	Less           = Minor
+	GreaterOrEqual = MajorEquals
+	LessOrEqual    = MinorEquals
 )
 
 // Filter applies a filtering operation to the DataFrame based on the operator, key, value, and optional parameters.
@@ -42,10 +50,12 @@ const (
 // Available Operators:
 // - Equals: Available for numeric, string and bool types.
 // - NotEquals: Available for numeric, string and bool types.
-// - Major: Available for numeric types.
-// - Minor: Available for numeric types.
-// - MajorEquals: Available for numeric types.
-// - MinorEquals: Available for numeric types.
+// - Greater (Major): Available for numeric types.
+// - Less (Minor): Available for numeric types.
+// - GreaterOrEqual (MajorEquals): Available for numeric types.
+// - LessOrEqual (MinorEquals): Available for numeric types.
+// - Between: Available for numeric types. Value must be []float64{min, max}.
+// - NotBetween: Available for numeric types. Value must be []float64{min, max}.
 // - InList: Available for numeric and string types.
 // - NotInList: Available for numeric and string types.
 // - RegExp: Available for string types.
@@ -65,9 +75,12 @@ func (d *DataFrame) Filter(operator Operator, key KeyName, value any, options ma
 	var keys = make(map[KeyName]KeyType)
 
 	if ContainsF(string(key), "^") || ContainsF(string(key), "[") || ContainsF(string(key), "(") {
-		for dataFrameKey, keyType := range d.Keys {
-			if m, e := MatchesRegExpF(string(dataFrameKey), string(key)); e == nil && m {
-				keys[dataFrameKey] = keyType
+		re, err := d.getCompiledRegex(string(key))
+		if err == nil {
+			for dataFrameKey, keyType := range d.Keys {
+				if re.MatchString(string(dataFrameKey)) {
+					keys[dataFrameKey] = keyType
+				}
 			}
 		}
 	} else {
@@ -130,7 +143,7 @@ func (d *DataFrame) Filter(operator Operator, key KeyName, value any, options ma
 				}
 				if keyValues, ok := d.Numerics[dataFrameKey]; ok {
 					for keyValue, ids := range keyValues {
-						if MajorThanF(keyValue, floatValue) {
+						if !MajorThanF(floatValue, keyValue) {
 							continue
 						}
 
@@ -203,6 +216,46 @@ func (d *DataFrame) Filter(operator Operator, key KeyName, value any, options ma
 						}
 					}
 				}
+			case Between:
+				rangeValues, ok := value.([]float64)
+				if !ok || len(rangeValues) != 2 {
+					return results
+				}
+				min, max := rangeValues[0], rangeValues[1]
+				if min > max {
+					min, max = max, min
+				}
+				if keyValues, ok := d.Numerics[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if keyValue < min || keyValue > max {
+							continue
+						}
+
+						for id := range ids {
+							results.Insert(d.Data[id])
+						}
+					}
+				}
+			case NotBetween:
+				rangeValues, ok := value.([]float64)
+				if !ok || len(rangeValues) != 2 {
+					return results
+				}
+				min, max := rangeValues[0], rangeValues[1]
+				if min > max {
+					min, max = max, min
+				}
+				if keyValues, ok := d.Numerics[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if keyValue >= min && keyValue <= max {
+							continue
+						}
+
+						for id := range ids {
+							results.Insert(d.Data[id])
+						}
+					}
+				}
 			default:
 				log.Printf("incorrect operator '%v' for key '%s' of type '%v'", operator, key, keyType)
 			}
@@ -256,8 +309,12 @@ func (d *DataFrame) Filter(operator Operator, key KeyName, value any, options ma
 					return results
 				}
 				if keyValues, ok := d.Strings[dataFrameKey]; ok {
+					re, err := d.getCompiledRegex(stringValue)
+					if err != nil {
+						continue
+					}
 					for keyValue, ids := range keyValues {
-						if m, e := MatchesRegExpF(keyValue, stringValue); e != nil && !m {
+						if !re.MatchString(keyValue) {
 							continue
 						}
 
@@ -272,8 +329,12 @@ func (d *DataFrame) Filter(operator Operator, key KeyName, value any, options ma
 					return results
 				}
 				if keyValues, ok := d.Strings[dataFrameKey]; ok {
+					re, err := d.getCompiledRegex(stringValue)
+					if err != nil {
+						continue
+					}
 					for keyValue, ids := range keyValues {
-						if m, e := MatchesRegExpF(keyValue, stringValue); e != nil || m {
+						if re.MatchString(keyValue) {
 							continue
 						}
 
@@ -536,9 +597,12 @@ func (d *DataFrame) FindFirstByKey(key KeyName) (uuid.UUID, KeyName, interface{}
 	var keys = make(map[KeyName]KeyType)
 
 	if ContainsF(string(key), "^") || ContainsF(string(key), "[") || ContainsF(string(key), "(") {
-		for dataFrameKey, keyType := range d.Keys {
-			if m, e := MatchesRegExpF(string(dataFrameKey), string(key)); e == nil && m {
-				keys[dataFrameKey] = keyType
+		re, err := d.getCompiledRegex(string(key))
+		if err == nil {
+			for dataFrameKey, keyType := range d.Keys {
+				if re.MatchString(string(dataFrameKey)) {
+					keys[dataFrameKey] = keyType
+				}
 			}
 		}
 	} else {
@@ -597,7 +661,13 @@ func MatchesRegExpF(value, regExp string) (bool, error) {
 }
 
 // MajorThanF compares two float64 numbers and returns true if the first number is greater than the second.
+// Deprecated: Use GreaterThanF instead
 func MajorThanF(left, right float64) bool {
+	return left > right
+}
+
+// GreaterThanF compares two float64 numbers and returns true if the first number is greater than the second.
+func GreaterThanF(left, right float64) bool {
 	return left > right
 }
 
@@ -634,11 +704,23 @@ func ContainsF(value, substring string) bool {
 }
 
 // StartsWithF checks if the given string 'value' starts with the specified 'prefix' and returns true if it does.
+// Deprecated: Use HasPrefixF instead
 func StartsWithF(value, prefix string) bool {
 	return strings.HasPrefix(value, prefix)
 }
 
+// HasPrefixF checks if the given string 'value' starts with the specified 'prefix' and returns true if it does.
+func HasPrefixF(value, prefix string) bool {
+	return strings.HasPrefix(value, prefix)
+}
+
 // EndsWithF checks if the given string 'value' ends with the specified 'suffix'. Returns true if it does, otherwise false.
+// Deprecated: Use HasSuffixF instead
 func EndsWithF(value, suffix string) bool {
+	return strings.HasSuffix(value, suffix)
+}
+
+// HasSuffixF checks if the given string 'value' ends with the specified 'suffix'. Returns true if it does, otherwise false.
+func HasSuffixF(value, suffix string) bool {
 	return strings.HasSuffix(value, suffix)
 }
