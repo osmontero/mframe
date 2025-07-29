@@ -69,3 +69,63 @@ func (d *DataFrame) Variance(field KeyName) (float64, error) {
 	defer d.Locker.RUnlock()
 	return stats.Variance(d.sliceOfFloat64Unlocked(field))
 }
+
+// StandardDeviation calculates the standard deviation of the values in the specified field
+// and returns it as a float64 along with any error.
+func (d *DataFrame) StandardDeviation(field KeyName) (float64, error) {
+	d.Locker.RLock()
+	defer d.Locker.RUnlock()
+	return stats.StandardDeviation(d.sliceOfFloat64Unlocked(field))
+}
+
+// Percentile calculates the percentile value for the specified field and percentile (0-100)
+// and returns it as a float64 along with any error.
+func (d *DataFrame) Percentile(field KeyName, percent float64) (float64, error) {
+	d.Locker.RLock()
+	defer d.Locker.RUnlock()
+	return stats.Percentile(d.sliceOfFloat64Unlocked(field), percent)
+}
+
+// Mode returns the most frequently occurring value(s) in the specified field.
+// Multiple values are returned if there is a tie for the most frequent.
+func (d *DataFrame) Mode(field KeyName) ([]float64, error) {
+	d.Locker.RLock()
+	defer d.Locker.RUnlock()
+	return stats.Mode(d.sliceOfFloat64Unlocked(field))
+}
+
+// Range calculates the difference between the maximum and minimum values
+// in the specified field and returns it as a float64.
+func (d *DataFrame) Range(field KeyName) (float64, error) {
+	d.Locker.RLock()
+	defer d.Locker.RUnlock()
+	data := d.sliceOfFloat64Unlocked(field)
+	if len(data) == 0 {
+		return 0, stats.EmptyInputErr
+	}
+	minVal, err := stats.Min(data)
+	if err != nil {
+		return 0, err
+	}
+	maxVal, err := stats.Max(data)
+	if err != nil {
+		return 0, err
+	}
+	return maxVal - minVal, nil
+}
+
+// GeometricMean calculates the geometric mean of the values in the specified field
+// and returns it as a float64 along with any error.
+func (d *DataFrame) GeometricMean(field KeyName) (float64, error) {
+	d.Locker.RLock()
+	defer d.Locker.RUnlock()
+	return stats.GeometricMean(d.sliceOfFloat64Unlocked(field))
+}
+
+// HarmonicMean calculates the harmonic mean of the values in the specified field
+// and returns it as a float64 along with any error.
+func (d *DataFrame) HarmonicMean(field KeyName) (float64, error) {
+	d.Locker.RLock()
+	defer d.Locker.RUnlock()
+	return stats.HarmonicMean(d.sliceOfFloat64Unlocked(field))
+}
