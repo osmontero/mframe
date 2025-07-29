@@ -100,24 +100,23 @@ func (d *DataFrame) index(kv map[KeyName]interface{}, wrapKey KeyName, id uuid.U
 
 			d.Strings[kvKey][uuidValue][id] = true
 		case "time.Time":
-			err := d.addMapping(kvKey, String)
+			err := d.addMapping(kvKey, Time)
 			if err != nil {
 				log.Printf("error adding mapping for key '%s': %s", kvKey, err.Error())
 				continue
 			}
 
-			timeValue := kvValue.(time.Time).Format(time.RFC3339)
-			(*row)[kvKey] = timeValue
+			timeValue := kvValue.(time.Time)
 
-			if len(d.Strings[kvKey]) == 0 {
-				d.Strings[kvKey] = make(map[string]map[uuid.UUID]bool)
+			if len(d.Times[kvKey]) == 0 {
+				d.Times[kvKey] = make(map[time.Time]map[uuid.UUID]bool)
 			}
 
-			if len(d.Strings[kvKey][timeValue]) == 0 {
-				d.Strings[kvKey][timeValue] = make(map[uuid.UUID]bool)
+			if len(d.Times[kvKey][timeValue]) == 0 {
+				d.Times[kvKey][timeValue] = make(map[uuid.UUID]bool)
 			}
 
-			d.Strings[kvKey][timeValue][id] = true
+			d.Times[kvKey][timeValue][id] = true
 		default:
 			log.Printf("unknown field type: %s", kvValueType.String())
 		}

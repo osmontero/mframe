@@ -301,3 +301,112 @@ func TestFilter(t *testing.T) {
 		})
 	}
 }
+
+func TestTimeRangeFilter(t *testing.T) {
+	var cache mframe.DataFrame
+	cache.Init(24 * time.Hour)
+	cache.StartCleaner()
+	defer cache.StopCleaner()
+
+	// Create test data with time fields
+	baseTime := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
+	kvs := []map[mframe.KeyName]interface{}{
+		{"id": 1, "name": "Event1", "created_at": baseTime},
+		{"id": 2, "name": "Event2", "created_at": baseTime.Add(24 * time.Hour)},
+		{"id": 3, "name": "Event3", "created_at": baseTime.Add(48 * time.Hour)},
+		{"id": 4, "name": "Event4", "created_at": baseTime.Add(72 * time.Hour)},
+		{"id": 5, "name": "Event5", "created_at": baseTime.Add(96 * time.Hour)},
+		{"id": 6, "name": "Event6", "created_at": baseTime.Add(120 * time.Hour)},
+	}
+
+	for _, v := range kvs {
+		cache.Insert(v)
+	}
+
+	tests := []struct {
+		name     string
+		operator mframe.Operator
+		key      mframe.KeyName
+		value    interface{}
+		wantIDs  []int
+	}{
+		{
+			name:     "TimeBetween_MiddleRange",
+			operator: mframe.Between,
+			key:      "created_at",
+			value: []time.Time{
+				baseTime.Add(24 * time.Hour), // Jan 2
+				baseTime.Add(72 * time.Hour), // Jan 4
+			},
+			wantIDs: []int{2, 3, 4}, // Events 2, 3, 4
+		},
+		{
+			name:     "TimeBetween_FullRange",
+			operator: mframe.Between,
+			key:      "created_at",
+			value: []time.Time{
+				baseTime,
+				baseTime.Add(120 * time.Hour),
+			},
+			wantIDs: []int{1, 2, 3, 4, 5, 6}, // All events
+		},
+		{
+			name:     "TimeBetween_ReversedOrder",
+			operator: mframe.Between,
+			key:      "created_at",
+			value: []time.Time{
+				baseTime.Add(72 * time.Hour), // Jan 4 (end)
+				baseTime.Add(24 * time.Hour), // Jan 2 (start) - reversed
+			},
+			wantIDs: []int{2, 3, 4}, // Should still work correctly
+		},
+		{
+			name:     "TimeNotBetween_MiddleRange",
+			operator: mframe.NotBetween,
+			key:      "created_at",
+			value: []time.Time{
+				baseTime.Add(24 * time.Hour), // Jan 2
+				baseTime.Add(72 * time.Hour), // Jan 4
+			},
+			wantIDs: []int{1, 5, 6}, // Events 1, 5, 6
+		},
+		{
+			name:     "TimeNotBetween_ExcludeAll",
+			operator: mframe.NotBetween,
+			key:      "created_at",
+			value: []time.Time{
+				baseTime.Add(-24 * time.Hour), // Before all
+				baseTime.Add(144 * time.Hour), // After all
+			},
+			wantIDs: []int{}, // No events outside this range
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := cache.Filter(tt.operator, tt.key, tt.value, nil)
+
+			if len(got.Data) != len(tt.wantIDs) {
+				t.Errorf("Expected %d rows, but got %d", len(tt.wantIDs), len(got.Data))
+			}
+
+			// Check that we got the expected IDs
+			gotIDs := make(map[int]bool)
+			for _, row := range got.Data {
+				// Check for int first
+				if id, ok := row["id"].(int); ok {
+					gotIDs[id] = true
+				} else if idFloat, ok := row["id"].(float64); ok {
+					// DataFrame stores numbers as float64
+					gotIDs[int(idFloat)] = true
+				}
+			}
+
+			for _, wantID := range tt.wantIDs {
+				if !gotIDs[wantID] {
+					t.Errorf("Expected ID %d in results but it was not found", wantID)
+				}
+			}
+		})
+	}
+}

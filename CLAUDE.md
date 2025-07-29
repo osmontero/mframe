@@ -48,6 +48,7 @@ go test -v ./...
     - **Filter** (`filter.go`): Advanced filtering with operators:
         - String: equals, regex, contains, hasPrefix, hasSuffix
         - Numeric: equals, greater, greaterOrEqual, lower, lowerOrEqual, between
+        - Time: between, notBetween (for time.Time values)
         - Network: CIDR matching
         - List operations: in, notIn
     - **Cleaner** (`cleaner.go`): Background goroutine for TTL-based cleanup

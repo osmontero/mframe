@@ -25,6 +25,7 @@ const (
 	String  KeyType = 1
 	Numeric KeyType = 2
 	Boolean KeyType = 3
+	Time    KeyType = 4
 )
 
 // KeysIndex is a map that associates KeyName keys with their corresponding KeyType values.
@@ -39,6 +40,9 @@ type NumericsIndex map[KeyName]map[float64]map[uuid.UUID]bool
 // BooleansIndex is a map of KeyName keys to map of boolean keys to map of UUID keys to boolean values.
 type BooleansIndex map[KeyName]map[bool]map[uuid.UUID]bool
 
+// TimesIndex is a map of KeyName keys to map of time.Time keys to map of UUID keys to boolean values.
+type TimesIndex map[KeyName]map[time.Time]map[uuid.UUID]bool
+
 // ExpireAtIndex is a map that associates UUID keys with their corresponding expiration times as time.Time values.
 type ExpireAtIndex map[uuid.UUID]time.Time
 
@@ -52,6 +56,7 @@ type DataFrame struct {
 	Strings     StringsIndex
 	Numerics    NumericsIndex
 	Booleans    BooleansIndex
+	Times       TimesIndex
 	ExpireAt    ExpireAtIndex
 	Locker      sync.RWMutex
 	TTL         time.Duration
@@ -67,6 +72,7 @@ func (d *DataFrame) Init(ttl time.Duration) {
 	d.Strings = make(StringsIndex)
 	d.Numerics = make(NumericsIndex)
 	d.Booleans = make(BooleansIndex)
+	d.Times = make(TimesIndex)
 	d.ExpireAt = make(ExpireAtIndex)
 	d.TTL = ttl
 	d.regexCache = make(map[string]*regexp.Regexp)

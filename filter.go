@@ -6,6 +6,7 @@ import (
 	"net"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // Operator defines a set of comparison or matching operations that can be applied in conditional logic.
@@ -54,8 +55,14 @@ const (
 // - Less (Minor): Available for numeric types.
 // - GreaterOrEqual (MajorEquals): Available for numeric types.
 // - LessOrEqual (MinorEquals): Available for numeric types.
-// - Between: Available for numeric types. Value must be []float64{min, max}.
-// - NotBetween: Available for numeric types. Value must be []float64{min, max}.
+// - Between: Available for numeric and time types.
+//   - For numeric: Value must be []float64{min, max}
+//   - For time: Value must be []time.Time{startTime, endTime}
+//
+// - NotBetween: Available for numeric and time types.
+//   - For numeric: Value must be []float64{min, max}
+//   - For time: Value must be []time.Time{startTime, endTime}
+//
 // - InList: Available for numeric and string types.
 // - NotInList: Available for numeric and string types.
 // - RegExp: Available for string types.
@@ -583,6 +590,51 @@ func (d *DataFrame) Filter(operator Operator, key KeyName, value any, options ma
 			default:
 				log.Printf("incorrect operator '%v' for key '%s' of type '%v'", operator, key, keyType)
 			}
+		case Time:
+			switch operator {
+			case Between:
+				timeValues, ok := value.([]time.Time)
+				if !ok || len(timeValues) != 2 {
+					return results
+				}
+				startTime, endTime := timeValues[0], timeValues[1]
+				if startTime.After(endTime) {
+					startTime, endTime = endTime, startTime
+				}
+				if keyValues, ok := d.Times[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if keyValue.Before(startTime) || keyValue.After(endTime) {
+							continue
+						}
+
+						for id := range ids {
+							results.Insert(d.Data[id])
+						}
+					}
+				}
+			case NotBetween:
+				timeValues, ok := value.([]time.Time)
+				if !ok || len(timeValues) != 2 {
+					return results
+				}
+				startTime, endTime := timeValues[0], timeValues[1]
+				if startTime.After(endTime) {
+					startTime, endTime = endTime, startTime
+				}
+				if keyValues, ok := d.Times[dataFrameKey]; ok {
+					for keyValue, ids := range keyValues {
+						if !keyValue.Before(startTime) && !keyValue.After(endTime) {
+							continue
+						}
+
+						for id := range ids {
+							results.Insert(d.Data[id])
+						}
+					}
+				}
+			default:
+				log.Printf("incorrect operator '%v' for key '%s' of type '%v'", operator, key, keyType)
+			}
 		}
 	}
 
@@ -629,6 +681,14 @@ func (d *DataFrame) FindFirstByKey(key KeyName) (uuid.UUID, KeyName, interface{}
 			}
 		case Boolean:
 			if keyValues, ok := d.Booleans[dataFrameKey]; ok {
+				for _, keyValue := range keyValues {
+					for row := range keyValue {
+						return row, dataFrameKey, d.Data[row][dataFrameKey]
+					}
+				}
+			}
+		case Time:
+			if keyValues, ok := d.Times[dataFrameKey]; ok {
 				for _, keyValue := range keyValues {
 					for row := range keyValue {
 						return row, dataFrameKey, d.Data[row][dataFrameKey]

@@ -88,6 +88,20 @@ func (d *DataFrame) RemoveElement(id uuid.UUID) {
 		}
 	}
 
+	for k1, v1 := range d.Times {
+		for k2, v2 := range v1 {
+			delete(v2, id)
+			if len(v2) == 0 {
+				delete(v1, k2)
+			}
+		}
+		if len(v1) == 0 {
+			delete(d.Times, k1)
+		} else {
+			keysInUse[k1] = true
+		}
+	}
+
 	// Clean up Keys index for keys that are no longer in use
 	for key := range d.Keys {
 		if !keysInUse[key] {
