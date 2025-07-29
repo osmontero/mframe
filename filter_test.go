@@ -62,7 +62,7 @@ func TestFilter(t *testing.T) {
 		},
 		{
 			name:     "GreaterThan",
-			operator: mframe.Major,
+			operator: mframe.Greater,
 			key:      "age",
 			value:    35.0,
 			options:  nil,
@@ -73,7 +73,7 @@ func TestFilter(t *testing.T) {
 		},
 		{
 			name:     "LessThan",
-			operator: mframe.Minor,
+			operator: mframe.Less,
 			key:      "age",
 			value:    35.0,
 			options:  nil,
@@ -84,7 +84,7 @@ func TestFilter(t *testing.T) {
 		},
 		{
 			name:     "GreaterThanOrEqual",
-			operator: mframe.MajorEquals,
+			operator: mframe.GreaterOrEqual,
 			key:      "age",
 			value:    35.0,
 			options:  nil,
@@ -96,7 +96,7 @@ func TestFilter(t *testing.T) {
 		},
 		{
 			name:     "LessThanOrEqual",
-			operator: mframe.MinorEquals,
+			operator: mframe.LessOrEqual,
 			key:      "age",
 			value:    35.0,
 			options:  nil,
