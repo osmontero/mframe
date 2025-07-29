@@ -18,7 +18,7 @@ func (d *DataFrame) CleanExpired() {
 		case <-ticker.C:
 			now := time.Now().UTC()
 
-			var toRemove []uuid.UUID
+			toRemove := make([]uuid.UUID, 0)
 
 			d.Locker.RLock()
 			for k, v := range d.ExpireAt {
