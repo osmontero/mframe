@@ -134,7 +134,7 @@ func (d *DataFrame) Filter(operator Operator, key KeyName, value any, options ma
 				}
 				if keyValues, ok := d.Numerics[dataFrameKey]; ok {
 					for keyValue, ids := range keyValues {
-						if !MajorThanF(keyValue, floatValue) {
+						if !GreaterThanF(keyValue, floatValue) {
 							continue
 						}
 
@@ -150,7 +150,7 @@ func (d *DataFrame) Filter(operator Operator, key KeyName, value any, options ma
 				}
 				if keyValues, ok := d.Numerics[dataFrameKey]; ok {
 					for keyValue, ids := range keyValues {
-						if !MajorThanF(floatValue, keyValue) {
+						if !GreaterThanF(floatValue, keyValue) {
 							continue
 						}
 
@@ -166,7 +166,7 @@ func (d *DataFrame) Filter(operator Operator, key KeyName, value any, options ma
 				}
 				if keyValues, ok := d.Numerics[dataFrameKey]; ok {
 					for keyValue, ids := range keyValues {
-						if !EqualsF(keyValue, floatValue) && !MajorThanF(keyValue, floatValue) {
+						if !EqualsF(keyValue, floatValue) && !GreaterThanF(keyValue, floatValue) {
 							continue
 						}
 
@@ -182,7 +182,7 @@ func (d *DataFrame) Filter(operator Operator, key KeyName, value any, options ma
 				}
 				if keyValues, ok := d.Numerics[dataFrameKey]; ok {
 					for keyValue, ids := range keyValues {
-						if !EqualsF(keyValue, floatValue) && MajorThanF(keyValue, floatValue) {
+						if !EqualsF(keyValue, floatValue) && GreaterThanF(keyValue, floatValue) {
 							continue
 						}
 
@@ -488,7 +488,7 @@ func (d *DataFrame) Filter(operator Operator, key KeyName, value any, options ma
 							stringValue = strings.ToLower(stringValue)
 						}
 
-						if !StartsWithF(keyValue, stringValue) {
+						if !HasPrefixF(keyValue, stringValue) {
 							continue
 						}
 
@@ -509,7 +509,7 @@ func (d *DataFrame) Filter(operator Operator, key KeyName, value any, options ma
 							stringValue = strings.ToLower(stringValue)
 						}
 
-						if StartsWithF(keyValue, stringValue) {
+						if HasPrefixF(keyValue, stringValue) {
 							continue
 						}
 
@@ -530,7 +530,7 @@ func (d *DataFrame) Filter(operator Operator, key KeyName, value any, options ma
 							stringValue = strings.ToLower(stringValue)
 						}
 
-						if !EndsWithF(keyValue, stringValue) {
+						if !HasSuffixF(keyValue, stringValue) {
 							continue
 						}
 
@@ -551,7 +551,7 @@ func (d *DataFrame) Filter(operator Operator, key KeyName, value any, options ma
 							stringValue = strings.ToLower(stringValue)
 						}
 
-						if EndsWithF(keyValue, stringValue) {
+						if HasSuffixF(keyValue, stringValue) {
 							continue
 						}
 
@@ -720,12 +720,6 @@ func MatchesRegExpF(value, regExp string) (bool, error) {
 	return false, nil
 }
 
-// MajorThanF compares two float64 numbers and returns true if the first number is greater than the second.
-// Deprecated: Use GreaterThanF instead
-func MajorThanF(left, right float64) bool {
-	return left > right
-}
-
 // GreaterThanF compares two float64 numbers and returns true if the first number is greater than the second.
 func GreaterThanF(left, right float64) bool {
 	return left > right
@@ -763,21 +757,9 @@ func ContainsF(value, substring string) bool {
 	return strings.Contains(value, substring)
 }
 
-// StartsWithF checks if the given string 'value' starts with the specified 'prefix' and returns true if it does.
-// Deprecated: Use HasPrefixF instead
-func StartsWithF(value, prefix string) bool {
-	return strings.HasPrefix(value, prefix)
-}
-
 // HasPrefixF checks if the given string 'value' starts with the specified 'prefix' and returns true if it does.
 func HasPrefixF(value, prefix string) bool {
 	return strings.HasPrefix(value, prefix)
-}
-
-// EndsWithF checks if the given string 'value' ends with the specified 'suffix'. Returns true if it does, otherwise false.
-// Deprecated: Use HasSuffixF instead
-func EndsWithF(value, suffix string) bool {
-	return strings.HasSuffix(value, suffix)
 }
 
 // HasSuffixF checks if the given string 'value' ends with the specified 'suffix'. Returns true if it does, otherwise false.

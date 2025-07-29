@@ -58,10 +58,26 @@ func (d *DataFrame) index(kv map[KeyName]interface{}, wrapKey KeyName, id uuid.U
 			d.num(kvKey, kvValue.(float64), id, row)
 		case "int64":
 			d.num(kvKey, float64(kvValue.(int64)), id, row)
-		case "float":
+		case "float32":
 			d.num(kvKey, float64(kvValue.(float32)), id, row)
 		case "int":
 			d.num(kvKey, float64(kvValue.(int)), id, row)
+		case "int32":
+			d.num(kvKey, float64(kvValue.(int32)), id, row)
+		case "int16":
+			d.num(kvKey, float64(kvValue.(int16)), id, row)
+		case "int8":
+			d.num(kvKey, float64(kvValue.(int8)), id, row)
+		case "uint":
+			d.num(kvKey, float64(kvValue.(uint)), id, row)
+		case "uint64":
+			d.num(kvKey, float64(kvValue.(uint64)), id, row)
+		case "uint32":
+			d.num(kvKey, float64(kvValue.(uint32)), id, row)
+		case "uint16":
+			d.num(kvKey, float64(kvValue.(uint16)), id, row)
+		case "uint8":
+			d.num(kvKey, float64(kvValue.(uint8)), id, row)
 		case "bool":
 			err := d.addMapping(kvKey, Boolean)
 			if err != nil {
@@ -175,6 +191,57 @@ func (d *DataFrame) InsertWithError(data map[KeyName]interface{}) error {
 func (d *DataFrame) insertWithIDUnlocked(id uuid.UUID, data Row) {
 	d.Data[id] = data
 	d.ExpireAt[id] = time.Now().UTC().Add(d.TTL)
+}
+
+// InsertBatch adds multiple rows to the DataFrame in a single operation,
+// reducing lock contention for bulk inserts.
+func (d *DataFrame) InsertBatch(rows []map[KeyName]interface{}) error {
+	if len(rows) == 0 {
+		return fmt.Errorf("cannot insert empty batch")
+	}
+
+	d.Locker.Lock()
+	defer d.Locker.Unlock()
+
+	for _, data := range rows {
+		if data == nil {
+			continue
+		}
+		if len(data) == 0 {
+			continue
+		}
+
+		id := uuid.New()
+		var row = make(Row)
+		d.index(data, "", id, &row)
+		d.Data[id] = row
+		d.ExpireAt[id] = time.Now().UTC().Add(d.TTL)
+	}
+
+	return nil
+}
+
+// InsertBatchWithIDs adds multiple rows with specific IDs to the DataFrame.
+func (d *DataFrame) InsertBatchWithIDs(entries map[uuid.UUID]map[KeyName]interface{}) error {
+	if len(entries) == 0 {
+		return fmt.Errorf("cannot insert empty batch")
+	}
+
+	d.Locker.Lock()
+	defer d.Locker.Unlock()
+
+	for id, data := range entries {
+		if data == nil || len(data) == 0 {
+			continue
+		}
+
+		var row = make(Row)
+		d.index(data, "", id, &row)
+		d.Data[id] = row
+		d.ExpireAt[id] = time.Now().UTC().Add(d.TTL)
+	}
+
+	return nil
 }
 
 // addMapping maps a keyName to a specified keyType in the DataFrame.
