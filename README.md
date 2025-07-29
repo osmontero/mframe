@@ -6,10 +6,12 @@ A high-performance, in-memory DataFrame library for Go with TTL support, advance
 
 - 🚀 **High-performance** in-memory data storage with multiple indexes
 - ⏰ **TTL support** with automatic expiration and cleanup
-- 🔍 **Advanced filtering** with 18 different operators
-- 📊 **Statistical operations** (sum, average, median, min, max, variance)
+- 🔍 **Advanced filtering** with 20 different operators including time-based filtering
+- 📊 **Extended statistical operations** (sum, average, median, min, max, variance, standard deviation, percentile, mode, range, geometric mean, harmonic mean)
 - 🔒 **Thread-safe** operations with RWMutex
-- 🎯 **Type-safe** indexing for strings, numerics, and booleans
+- 🎯 **Type-safe** indexing for strings, numerics, booleans, and time values
+- ⚡ **Batch operations** for efficient bulk inserts
+- 🔄 **Regex caching** for improved pattern matching performance
 
 ## Installation
 
@@ -68,7 +70,23 @@ df.Insert(map[mframe.KeyName]interface{}{
     "price":      29.99,
     "in_stock":   true,
     "tags":       []string{"electronics", "mobile"},
+    "created_at": time.Now(),
 })
+
+// Batch insert for better performance
+batch := []map[mframe.KeyName]interface{}{
+    {"product_id": "P124", "price": 39.99, "created_at": time.Now()},
+    {"product_id": "P125", "price": 49.99, "created_at": time.Now()},
+    {"product_id": "P126", "price": 59.99, "created_at": time.Now()},
+}
+err := df.InsertBatch(batch)
+
+// Batch insert with specific IDs
+entries := map[uuid.UUID]map[mframe.KeyName]interface{}{
+    uuid.New(): {"product_id": "P127", "price": 69.99},
+    uuid.New(): {"product_id": "P128", "price": 79.99},
+}
+err = df.InsertBatchWithIDs(entries)
 
 // Append data from another DataFrame
 var df2 mframe.DataFrame
@@ -81,7 +99,7 @@ df.Append(&df2, "merged")
 
 ### Filtering Operations
 
-mframe supports 18 different operators for filtering:
+mframe supports 20 different operators for filtering:
 
 ```go
 // String operations
@@ -101,6 +119,16 @@ activeOnly := df.Filter(mframe.Equals, "active", true, nil)
 // List operations
 selectedProducts := df.Filter(mframe.InList, "product_id", []string{"P123", "P456", "P789"}, nil)
 excludedCategories := df.Filter(mframe.NotInList, "category", []string{"deprecated", "test"}, nil)
+
+// Time-based filtering
+startTime := time.Now().Add(-24 * time.Hour)
+endTime := time.Now()
+recentRecords := df.Filter(mframe.Between, "created_at", []time.Time{startTime, endTime}, nil)
+oldRecords := df.Filter(mframe.NotBetween, "created_at", []time.Time{startTime, endTime}, nil)
+
+// Numeric range filtering
+priceRange := df.Filter(mframe.Between, "price", []float64{10.0, 50.0}, nil)
+outOfRange := df.Filter(mframe.NotBetween, "price", []float64{10.0, 50.0}, nil)
 
 // Network operations (CIDR)
 localNetwork := df.Filter(mframe.InCIDR, "ip", "192.168.0.0/16", nil)
@@ -133,6 +161,8 @@ names := df.Filter(mframe.Equals, "name", "john doe", options)
 | `NotStartsWith` | String not starts with | string                   |
 | `EndsWith`      | String ends with       | string                   |
 | `NotEndsWith`   | String not ends with   | string                   |
+| `Between`       | Value in range         | numeric, time.Time       |
+| `NotBetween`    | Value not in range     | numeric, time.Time       |
 
 ### Statistical Operations
 
@@ -148,6 +178,14 @@ median, err := df.Median("age")
 max, err := df.Max("price")
 min, err := df.Min("price")
 variance, err := df.Variance("score")
+stdDev, err := df.StandardDeviation("score")
+
+// Advanced statistical operations
+percentile95, err := df.Percentile("response_time", 95.0)
+modeValues, err := df.Mode("category_id")  // Returns []float64 for ties
+valueRange, err := df.Range("temperature")
+geomMean, err := df.GeometricMean("growth_rate")
+harmMean, err := df.HarmonicMean("speed")
 
 // Handle errors for non-numeric fields
 if err != nil {
@@ -243,14 +281,25 @@ cache.Insert(map[mframe.KeyName]interface{}{
 - String fields are indexed for exact and pattern matching
 - Numeric fields are indexed for range queries
 - Boolean fields are indexed for true/false filtering
+- Time fields are indexed for temporal queries
 
 ### 3. **Batch Operations**
 
 ```go
-// Instead of multiple filters, chain them
+// Use batch insert for multiple rows
+batch := make([]map[mframe.KeyName]interface{}, 1000)
+for i := 0; i < 1000; i++ {
+    batch[i] = map[mframe.KeyName]interface{}{
+        "id": i,
+        "value": rand.Float64(),
+    }
+}
+df.InsertBatch(batch) // Much faster than 1000 individual inserts
+
+// Chain filters for complex queries
 filtered := df.
-    Filter(mframe.Major, "age", 18, nil).
-    Filter(mframe.Minor, "age", 65, nil)
+    Filter(mframe.Greater, "age", 18, nil).
+    Filter(mframe.Less, "age", 65, nil)
 ```
 
 ### 4. **Memory Considerations**
@@ -258,6 +307,7 @@ filtered := df.
 - Each index maintains its own data structure
 - Consider memory usage when storing large datasets
 - Use `Stats()` to monitor memory usage
+- Regex patterns are cached to improve performance (configurable cache size)
 
 ### 5. **Concurrent Access**
 
@@ -267,7 +317,31 @@ filtered := df.
 
 ## Common Use Cases
 
-### 1. **Session Store**
+### 1. **Time-Series Data Analysis**
+
+```go
+var metrics mframe.DataFrame
+metrics.Init(24 * time.Hour) // Keep last 24 hours
+
+// Collect metrics
+metrics.Insert(map[mframe.KeyName]interface{}{
+    "metric_name": "cpu_usage",
+    "value":       75.5,
+    "timestamp":   time.Now(),
+    "host":        "server01",
+})
+
+// Analyze recent data
+lastHour := time.Now().Add(-1 * time.Hour)
+recentMetrics := metrics.Filter(mframe.Between, "timestamp", 
+    []time.Time{lastHour, time.Now()}, nil)
+
+// Calculate statistics
+avgCPU, _ := recentMetrics.Average("value")
+p95CPU, _ := recentMetrics.Percentile("value", 95.0)
+```
+
+### 2. **Session Store"
 
 ```go
 var sessions mframe.DataFrame
@@ -281,7 +355,7 @@ sessions.Insert(map[mframe.KeyName]interface{}{
 })
 ```
 
-### 2. **Rate Limiting**
+### 3. **Rate Limiting**
 
 ```go
 var requests mframe.DataFrame
@@ -294,7 +368,7 @@ if userRequests.Count() >= 100 {
 }
 ```
 
-### 3. **Real-time Analytics**
+### 4. **Real-time Analytics**
 
 ```go
 var events mframe.DataFrame
@@ -313,7 +387,7 @@ pageViews := events.Filter(mframe.Equals, "event_type", "page_view", nil)
 uniqueUsers := pageViews.CountUnique("user_id")
 ```
 
-### 4. **Caching**
+### 5. **Caching**
 
 ```go
 var cache mframe.DataFrame
@@ -334,6 +408,37 @@ if cached.Count() > 0 {
 }
 ```
 
+## Performance Optimizations
+
+### Regex Caching
+
+The DataFrame automatically caches compiled regex patterns for improved performance:
+
+```go
+// First call compiles and caches the regex
+df.Filter(mframe.RegExp, "email", `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`, nil)
+
+// Subsequent calls use the cached compiled regex
+df.Filter(mframe.RegExp, "email", `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`, nil)
+```
+
+### Batch Processing
+
+For bulk operations, use batch methods:
+
+```go
+// Efficient batch insert
+batch := make([]map[mframe.KeyName]interface{}, 0, 10000)
+// ... populate batch ...
+df.InsertBatch(batch)
+
+// Process results in batches
+results := df.Filter(mframe.Greater, "score", 80.0, nil)
+for _, row := range results.ToSlice() {
+    // Process each row
+}
+```
+
 ## Error Handling
 
 Most operations that can fail return an error:
@@ -345,9 +450,32 @@ if err != nil {
     log.Printf("Cannot sum non-numeric field: %v", err)
 }
 
+// Batch operations validate input
+err := df.InsertBatch(nil)
+if err != nil {
+    log.Printf("Batch insert failed: %v", err)
+}
+
 // Filter operations with regex can fail
 filtered := df.Filter(mframe.RegExp, "email", "[invalid regex", nil)
 // Invalid regex patterns are handled gracefully (no matches)
+```
+
+## API Improvements
+
+### Clearer Operator Names
+
+The library now provides more intuitive operator names while maintaining backward compatibility:
+
+```go
+// New clearer names
+df.Filter(mframe.Greater, "age", 18, nil)        // Instead of Major
+df.Filter(mframe.Less, "age", 65, nil)           // Instead of Minor
+df.Filter(mframe.GreaterOrEqual, "score", 90, nil) // Instead of MajorEquals
+df.Filter(mframe.LessOrEqual, "price", 100, nil)   // Instead of MinorEquals
+
+// Old names still work for backward compatibility
+df.Filter(mframe.Major, "age", 18, nil)  // Deprecated but functional
 ```
 
 ## License

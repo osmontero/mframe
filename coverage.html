@@ -1,0 +1,1988 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>mframe: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/threatwinds/mframe/append.go (100.0%)</option>
+				
+				<option value="file1">github.com/threatwinds/mframe/cleaner.go (74.1%)</option>
+				
+				<option value="file2">github.com/threatwinds/mframe/dataframe.go (84.6%)</option>
+				
+				<option value="file3">github.com/threatwinds/mframe/explain.go (45.1%)</option>
+				
+				<option value="file4">github.com/threatwinds/mframe/filter.go (64.8%)</option>
+				
+				<option value="file5">github.com/threatwinds/mframe/insert.go (72.8%)</option>
+				
+				<option value="file6">github.com/threatwinds/mframe/math.go (94.6%)</option>
+				
+				<option value="file7">github.com/threatwinds/mframe/stats.go (70.0%)</option>
+				
+				<option value="file8">github.com/threatwinds/mframe/toslice.go (96.3%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package mframe
+
+// Append adds all rows from the given DataFrame to the current DataFrame with the specified key.
+func (d *DataFrame) Append(df *DataFrame, key string) <span class="cov8" title="1">{
+        df.Locker.RLock()
+        defer df.Locker.RUnlock()
+        for _, value := range df.Data </span><span class="cov8" title="1">{
+                value["key"] = key
+                d.Insert(value)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package mframe
+
+import (
+        "time"
+
+        "github.com/google/uuid"
+)
+
+// CleanExpired removes elements from the DataFrame whose expiration time has passed. It runs continuously in a loop.
+func (d *DataFrame) CleanExpired() <span class="cov8" title="1">{
+        ticker := time.NewTicker(1 * time.Second)
+        defer ticker.Stop()
+
+        for </span><span class="cov8" title="1">{
+                select </span>{
+                case &lt;-d.stopCleaner:<span class="cov8" title="1">
+                        return</span>
+                case &lt;-ticker.C:<span class="cov8" title="1">
+                        now := time.Now().UTC()
+
+                        toRemove := make([]uuid.UUID, 0)
+
+                        d.Locker.RLock()
+                        for k, v := range d.ExpireAt </span><span class="cov8" title="1">{
+                                if v.Before(now) </span><span class="cov8" title="1">{
+                                        toRemove = append(toRemove, k)
+                                }</span>
+                        }
+                        <span class="cov8" title="1">d.Locker.RUnlock()
+
+                        for _, id := range toRemove </span><span class="cov8" title="1">{
+                                d.RemoveElement(id)
+                        }</span>
+                }
+        }
+}
+
+// RemoveElement removes the element with the specified UUID from all internal data structures in the DataFrame.
+func (d *DataFrame) RemoveElement(id uuid.UUID) <span class="cov8" title="1">{
+        d.Locker.Lock()
+        defer d.Locker.Unlock()
+
+        delete(d.ExpireAt, id)
+        delete(d.Data, id)
+
+        // Track which keys are still in use
+        keysInUse := make(map[KeyName]bool)
+
+        for k1, v1 := range d.Strings </span><span class="cov8" title="1">{
+                for k2, v2 := range v1 </span><span class="cov8" title="1">{
+                        delete(v2, id)
+                        if len(v2) == 0 </span><span class="cov8" title="1">{
+                                delete(v1, k2)
+                        }</span>
+                }
+                <span class="cov8" title="1">if len(v1) == 0 </span><span class="cov8" title="1">{
+                        delete(d.Strings, k1)
+                }</span> else<span class="cov8" title="1"> {
+                        keysInUse[k1] = true
+                }</span>
+        }
+
+        <span class="cov8" title="1">for k1, v1 := range d.Numerics </span><span class="cov8" title="1">{
+                for k2, v2 := range v1 </span><span class="cov8" title="1">{
+                        delete(v2, id)
+                        if len(v2) == 0 </span><span class="cov8" title="1">{
+                                delete(v1, k2)
+                        }</span>
+                }
+                <span class="cov8" title="1">if len(v1) == 0 </span><span class="cov8" title="1">{
+                        delete(d.Numerics, k1)
+                }</span> else<span class="cov8" title="1"> {
+                        keysInUse[k1] = true
+                }</span>
+        }
+
+        <span class="cov8" title="1">for k1, v1 := range d.Booleans </span><span class="cov0" title="0">{
+                for k2, v2 := range v1 </span><span class="cov0" title="0">{
+                        delete(v2, id)
+                        if len(v2) == 0 </span><span class="cov0" title="0">{
+                                delete(v1, k2)
+                        }</span>
+                }
+                <span class="cov0" title="0">if len(v1) == 0 </span><span class="cov0" title="0">{
+                        delete(d.Booleans, k1)
+                }</span> else<span class="cov0" title="0"> {
+                        keysInUse[k1] = true
+                }</span>
+        }
+
+        <span class="cov8" title="1">for k1, v1 := range d.Times </span><span class="cov0" title="0">{
+                for k2, v2 := range v1 </span><span class="cov0" title="0">{
+                        delete(v2, id)
+                        if len(v2) == 0 </span><span class="cov0" title="0">{
+                                delete(v1, k2)
+                        }</span>
+                }
+                <span class="cov0" title="0">if len(v1) == 0 </span><span class="cov0" title="0">{
+                        delete(d.Times, k1)
+                }</span> else<span class="cov0" title="0"> {
+                        keysInUse[k1] = true
+                }</span>
+        }
+
+        // Clean up Keys index for keys that are no longer in use
+        <span class="cov8" title="1">for key := range d.Keys </span><span class="cov8" title="1">{
+                if !keysInUse[key] </span><span class="cov8" title="1">{
+                        delete(d.Keys, key)
+                }</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package mframe
+
+import (
+        "regexp"
+        "sync"
+        "time"
+
+        "github.com/google/uuid"
+)
+
+// KeyType represents the type of key, used for distinguishing between different data types in a structure.
+type KeyType int
+
+// KeyName represents a type for defining keys in various data structures.
+type KeyName string
+
+// FilterOption defines an integer-based type for specifying filter behavior or options in the application.
+type FilterOption int
+
+const (
+        CaseSensitive FilterOption = 1
+)
+
+const (
+        String  KeyType = 1
+        Numeric KeyType = 2
+        Boolean KeyType = 3
+        Time    KeyType = 4
+)
+
+// KeysIndex is a map that associates KeyName keys with their corresponding KeyType values.
+type KeysIndex map[KeyName]KeyType
+
+// StringsIndex is a map of KeyName keys to map of string keys to map of UUID keys to boolean values.
+type StringsIndex map[KeyName]map[string]map[uuid.UUID]bool
+
+// NumericsIndex is a map of KeyName keys to map of float64 keys to map of UUID keys to boolean values.
+type NumericsIndex map[KeyName]map[float64]map[uuid.UUID]bool
+
+// BooleansIndex is a map of KeyName keys to map of boolean keys to map of UUID keys to boolean values.
+type BooleansIndex map[KeyName]map[bool]map[uuid.UUID]bool
+
+// TimesIndex is a map of KeyName keys to map of time.Time keys to map of UUID keys to boolean values.
+type TimesIndex map[KeyName]map[time.Time]map[uuid.UUID]bool
+
+// ExpireAtIndex is a map that associates UUID keys with their corresponding expiration times as time.Time values.
+type ExpireAtIndex map[uuid.UUID]time.Time
+
+// Row represents a single row of data as a map with KeyName keys and interface{} values.
+type Row map[KeyName]interface{}
+
+// DataFrame represents a structure for managing indexed data with TTL and thread-safe operations.
+type DataFrame struct {
+        Data           map[uuid.UUID]Row
+        Keys           KeysIndex
+        Strings        StringsIndex
+        Numerics       NumericsIndex
+        Booleans       BooleansIndex
+        Times          TimesIndex
+        ExpireAt       ExpireAtIndex
+        Locker         sync.RWMutex
+        TTL            time.Duration
+        regexCache     map[string]*regexp.Regexp
+        regexMutex     sync.RWMutex
+        regexCacheSize int
+        maxRegexCache  int
+        stopCleaner    chan bool
+}
+
+// Init initializes the DataFrame with default indexes, an empty data map, and sets the TTL for data expiration.
+func (d *DataFrame) Init(ttl time.Duration) <span class="cov8" title="1">{
+        d.Data = make(map[uuid.UUID]Row)
+        d.Keys = make(KeysIndex)
+        d.Strings = make(StringsIndex)
+        d.Numerics = make(NumericsIndex)
+        d.Booleans = make(BooleansIndex)
+        d.Times = make(TimesIndex)
+        d.ExpireAt = make(ExpireAtIndex)
+        d.TTL = ttl
+        d.regexCache = make(map[string]*regexp.Regexp)
+        d.maxRegexCache = 1000 // Default cache size
+        d.stopCleaner = make(chan bool)
+}</span>
+
+// InitWithOptions initializes the DataFrame with custom options.
+func (d *DataFrame) InitWithOptions(ttl time.Duration, maxRegexCache int) <span class="cov8" title="1">{
+        d.Init(ttl)
+        if maxRegexCache &gt; 0 </span><span class="cov8" title="1">{
+                d.maxRegexCache = maxRegexCache
+        }</span>
+}
+
+// StartCleaner starts the background goroutine for cleaning expired entries
+func (d *DataFrame) StartCleaner() <span class="cov8" title="1">{
+        go d.CleanExpired()
+}</span>
+
+// StopCleaner stops the background cleaner goroutine
+func (d *DataFrame) StopCleaner() <span class="cov8" title="1">{
+        if d.stopCleaner != nil </span><span class="cov8" title="1">{
+                d.stopCleaner &lt;- true
+        }</span>
+}
+
+// getCompiledRegex returns a compiled regular expression from cache or compiles and caches it
+func (d *DataFrame) getCompiledRegex(pattern string) (*regexp.Regexp, error) <span class="cov8" title="1">{
+        d.regexMutex.RLock()
+        re, exists := d.regexCache[pattern]
+        d.regexMutex.RUnlock()
+
+        if exists </span><span class="cov0" title="0">{
+                return re, nil
+        }</span>
+
+        // Compile the regex
+        <span class="cov8" title="1">compiled, err := regexp.Compile(pattern)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Cache the compiled regex with size limit
+        <span class="cov8" title="1">d.regexMutex.Lock()
+        defer d.regexMutex.Unlock()
+
+        // Check cache size and evict oldest if needed
+        if d.regexCacheSize &gt;= d.maxRegexCache </span><span class="cov0" title="0">{
+                // Simple eviction: remove one random entry
+                for k := range d.regexCache </span><span class="cov0" title="0">{
+                        delete(d.regexCache, k)
+                        d.regexCacheSize--
+                        break</span>
+                }
+        }
+
+        <span class="cov8" title="1">d.regexCache[pattern] = compiled
+        d.regexCacheSize++
+
+        return compiled, nil</span>
+}
+
+// ClearRegexCache clears the regex cache to free memory.
+func (d *DataFrame) ClearRegexCache() <span class="cov8" title="1">{
+        d.regexMutex.Lock()
+        d.regexCache = make(map[string]*regexp.Regexp)
+        d.regexCacheSize = 0
+        d.regexMutex.Unlock()
+}</span>
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package mframe
+
+import (
+        "fmt"
+        "strings"
+        "time"
+
+        "github.com/google/uuid"
+)
+
+// ExplainResult contains information about how a filter would be executed
+type ExplainResult struct {
+        Operator      string
+        Key           string
+        KeyType       string
+        IndexUsed     bool
+        EstimatedRows int
+        TotalRows     int
+        Details       []string
+}
+
+// Explain analyzes how a filter operation would be executed without actually running it
+func (d *DataFrame) Explain(operator Operator, key KeyName, value any) ExplainResult <span class="cov8" title="1">{
+        d.Locker.RLock()
+        defer d.Locker.RUnlock()
+
+        result := ExplainResult{
+                Operator:  operatorToString(operator),
+                Key:       string(key),
+                TotalRows: len(d.Data),
+                Details:   make([]string, 0),
+        }
+
+        // Check if key uses regex pattern
+        if ContainsF(string(key), "^") || ContainsF(string(key), "[") || ContainsF(string(key), "(") </span><span class="cov0" title="0">{
+                result.Details = append(result.Details, "Key uses regex pattern matching")
+                matchCount := 0
+                if re, err := d.getCompiledRegex(string(key)); err == nil </span><span class="cov0" title="0">{
+                        for dataFrameKey := range d.Keys </span><span class="cov0" title="0">{
+                                if re.MatchString(string(dataFrameKey)) </span><span class="cov0" title="0">{
+                                        matchCount++
+                                }</span>
+                        }
+                }
+                <span class="cov0" title="0">result.Details = append(result.Details, fmt.Sprintf("Pattern matches %d keys", matchCount))</span>
+        }
+
+        // Get key type
+        <span class="cov8" title="1">keyType, exists := d.Keys[key]
+        if !exists </span><span class="cov8" title="1">{
+                result.KeyType = "Unknown"
+                result.IndexUsed = false
+                result.Details = append(result.Details, "Key not found in indexes")
+                return result
+        }</span>
+
+        <span class="cov8" title="1">result.KeyType = keyTypeToString(keyType)
+        result.IndexUsed = true
+
+        // Estimate row count based on index
+        switch keyType </span>{
+        case Numeric:<span class="cov8" title="1">
+                if index, ok := d.Numerics[key]; ok </span><span class="cov8" title="1">{
+                        result.Details = append(result.Details, fmt.Sprintf("Numeric index contains %d unique values", len(index)))
+                        result.EstimatedRows = estimateNumericRows(operator, value, index)
+                }</span>
+        case String:<span class="cov8" title="1">
+                if index, ok := d.Strings[key]; ok </span><span class="cov8" title="1">{
+                        result.Details = append(result.Details, fmt.Sprintf("String index contains %d unique values", len(index)))
+                        result.EstimatedRows = estimateStringRows(operator, value, index)
+                }</span>
+        case Boolean:<span class="cov8" title="1">
+                if index, ok := d.Booleans[key]; ok </span><span class="cov8" title="1">{
+                        result.Details = append(result.Details, fmt.Sprintf("Boolean index contains %d unique values", len(index)))
+                        result.EstimatedRows = estimateBooleanRows(operator, value, index)
+                }</span>
+        case Time:<span class="cov0" title="0">
+                if index, ok := d.Times[key]; ok </span><span class="cov0" title="0">{
+                        result.Details = append(result.Details, fmt.Sprintf("Time index contains %d unique values", len(index)))
+                        result.EstimatedRows = estimateTimeRows(operator, value, index)
+                }</span>
+        }
+
+        // Add selectivity information
+        <span class="cov8" title="1">if result.TotalRows &gt; 0 </span><span class="cov8" title="1">{
+                selectivity := float64(result.EstimatedRows) / float64(result.TotalRows) * 100
+                result.Details = append(result.Details, fmt.Sprintf("Estimated selectivity: %.2f%%", selectivity))
+        }</span>
+
+        <span class="cov8" title="1">return result</span>
+}
+
+// String returns a formatted string representation of the explain result
+func (e ExplainResult) String() string <span class="cov8" title="1">{
+        var sb strings.Builder
+        sb.WriteString(fmt.Sprintf("EXPLAIN: Filter(%s, %s, &lt;value&gt;)\n", e.Operator, e.Key))
+        sb.WriteString(fmt.Sprintf("  Key Type: %s\n", e.KeyType))
+        sb.WriteString(fmt.Sprintf("  Index Used: %v\n", e.IndexUsed))
+        sb.WriteString(fmt.Sprintf("  Total Rows: %d\n", e.TotalRows))
+        sb.WriteString(fmt.Sprintf("  Estimated Rows: %d\n", e.EstimatedRows))
+
+        if len(e.Details) &gt; 0 </span><span class="cov8" title="1">{
+                sb.WriteString("  Details:\n")
+                for _, detail := range e.Details </span><span class="cov8" title="1">{
+                        sb.WriteString(fmt.Sprintf("    - %s\n", detail))
+                }</span>
+        }
+
+        <span class="cov8" title="1">return sb.String()</span>
+}
+
+func operatorToString(op Operator) string <span class="cov8" title="1">{
+        switch op </span>{
+        case Equals:<span class="cov8" title="1">
+                return "Equals"</span>
+        case NotEquals:<span class="cov0" title="0">
+                return "NotEquals"</span>
+        case Greater:<span class="cov0" title="0">
+                return "Greater"</span>
+        case Less:<span class="cov0" title="0">
+                return "Less"</span>
+        case GreaterOrEqual:<span class="cov0" title="0">
+                return "GreaterOrEqual"</span>
+        case LessOrEqual:<span class="cov0" title="0">
+                return "LessOrEqual"</span>
+        case InList:<span class="cov0" title="0">
+                return "InList"</span>
+        case NotInList:<span class="cov0" title="0">
+                return "NotInList"</span>
+        case RegExp:<span class="cov0" title="0">
+                return "RegExp"</span>
+        case NotRegExp:<span class="cov0" title="0">
+                return "NotRegExp"</span>
+        case InCIDR:<span class="cov0" title="0">
+                return "InCIDR"</span>
+        case NotInCIDR:<span class="cov0" title="0">
+                return "NotInCIDR"</span>
+        case Contains:<span class="cov0" title="0">
+                return "Contains"</span>
+        case NotContains:<span class="cov0" title="0">
+                return "NotContains"</span>
+        case StartsWith:<span class="cov0" title="0">
+                return "StartsWith"</span>
+        case NotStartsWith:<span class="cov0" title="0">
+                return "NotStartsWith"</span>
+        case EndsWith:<span class="cov0" title="0">
+                return "EndsWith"</span>
+        case NotEndsWith:<span class="cov0" title="0">
+                return "NotEndsWith"</span>
+        case Between:<span class="cov8" title="1">
+                return "Between"</span>
+        case NotBetween:<span class="cov0" title="0">
+                return "NotBetween"</span>
+        default:<span class="cov0" title="0">
+                return "Unknown"</span>
+        }
+}
+
+func keyTypeToString(kt KeyType) string <span class="cov8" title="1">{
+        switch kt </span>{
+        case String:<span class="cov8" title="1">
+                return "String"</span>
+        case Numeric:<span class="cov8" title="1">
+                return "Numeric"</span>
+        case Boolean:<span class="cov8" title="1">
+                return "Boolean"</span>
+        case Time:<span class="cov0" title="0">
+                return "Time"</span>
+        default:<span class="cov0" title="0">
+                return "Unknown"</span>
+        }
+}
+
+func estimateNumericRows(op Operator, value any, index map[float64]map[uuid.UUID]bool) int <span class="cov8" title="1">{
+        count := 0
+        switch op </span>{
+        case Equals:<span class="cov8" title="1">
+                if v, ok := value.(float64); ok </span><span class="cov8" title="1">{
+                        if ids, exists := index[v]; exists </span><span class="cov8" title="1">{
+                                count = len(ids)
+                        }</span>
+                }
+        case NotEquals:<span class="cov0" title="0">
+                if v, ok := value.(float64); ok </span><span class="cov0" title="0">{
+                        for key, ids := range index </span><span class="cov0" title="0">{
+                                if key != v </span><span class="cov0" title="0">{
+                                        count += len(ids)
+                                }</span>
+                        }
+                }
+        case Greater, Less, GreaterOrEqual, LessOrEqual:<span class="cov0" title="0">
+                if v, ok := value.(float64); ok </span><span class="cov0" title="0">{
+                        for key, ids := range index </span><span class="cov0" title="0">{
+                                switch op </span>{
+                                case Greater:<span class="cov0" title="0">
+                                        if key &gt; v </span><span class="cov0" title="0">{
+                                                count += len(ids)
+                                        }</span>
+                                case Less:<span class="cov0" title="0">
+                                        if key &lt; v </span><span class="cov0" title="0">{
+                                                count += len(ids)
+                                        }</span>
+                                case GreaterOrEqual:<span class="cov0" title="0">
+                                        if key &gt;= v </span><span class="cov0" title="0">{
+                                                count += len(ids)
+                                        }</span>
+                                case LessOrEqual:<span class="cov0" title="0">
+                                        if key &lt;= v </span><span class="cov0" title="0">{
+                                                count += len(ids)
+                                        }</span>
+                                }
+                        }
+                }
+        case Between, NotBetween:<span class="cov8" title="1">
+                if vals, ok := value.([]float64); ok &amp;&amp; len(vals) == 2 </span><span class="cov8" title="1">{
+                        min, max := vals[0], vals[1]
+                        if min &gt; max </span><span class="cov0" title="0">{
+                                min, max = max, min
+                        }</span>
+                        <span class="cov8" title="1">for key, ids := range index </span><span class="cov8" title="1">{
+                                if op == Between &amp;&amp; key &gt;= min &amp;&amp; key &lt;= max </span><span class="cov8" title="1">{
+                                        count += len(ids)
+                                }</span> else<span class="cov8" title="1"> if op == NotBetween &amp;&amp; (key &lt; min || key &gt; max) </span><span class="cov0" title="0">{
+                                        count += len(ids)
+                                }</span>
+                        }
+                }
+        default:<span class="cov0" title="0">
+                // For other operators, return total rows in index
+                for _, ids := range index </span><span class="cov0" title="0">{
+                        count += len(ids)
+                }</span>
+        }
+        <span class="cov8" title="1">return count</span>
+}
+
+func estimateStringRows(op Operator, value any, index map[string]map[uuid.UUID]bool) int <span class="cov8" title="1">{
+        count := 0
+        switch op </span>{
+        case Equals:<span class="cov8" title="1">
+                if v, ok := value.(string); ok </span><span class="cov8" title="1">{
+                        if ids, exists := index[v]; exists </span><span class="cov8" title="1">{
+                                count = len(ids)
+                        }</span>
+                }
+        case NotEquals:<span class="cov0" title="0">
+                if v, ok := value.(string); ok </span><span class="cov0" title="0">{
+                        for key, ids := range index </span><span class="cov0" title="0">{
+                                if key != v </span><span class="cov0" title="0">{
+                                        count += len(ids)
+                                }</span>
+                        }
+                }
+        case InList, NotInList:<span class="cov0" title="0">
+                if vals, ok := value.([]string); ok </span><span class="cov0" title="0">{
+                        valMap := make(map[string]bool)
+                        for _, v := range vals </span><span class="cov0" title="0">{
+                                valMap[v] = true
+                        }</span>
+                        <span class="cov0" title="0">for key, ids := range index </span><span class="cov0" title="0">{
+                                if op == InList &amp;&amp; valMap[key] </span><span class="cov0" title="0">{
+                                        count += len(ids)
+                                }</span> else<span class="cov0" title="0"> if op == NotInList &amp;&amp; !valMap[key] </span><span class="cov0" title="0">{
+                                        count += len(ids)
+                                }</span>
+                        }
+                }
+        default:<span class="cov0" title="0">
+                // For pattern-based operators, we can't easily estimate
+                // Return total rows as upper bound
+                for _, ids := range index </span><span class="cov0" title="0">{
+                        count += len(ids)
+                }</span>
+        }
+        <span class="cov8" title="1">return count</span>
+}
+
+func estimateBooleanRows(op Operator, value any, index map[bool]map[uuid.UUID]bool) int <span class="cov8" title="1">{
+        count := 0
+        switch op </span>{
+        case Equals:<span class="cov8" title="1">
+                if v, ok := value.(bool); ok </span><span class="cov8" title="1">{
+                        if ids, exists := index[v]; exists </span><span class="cov8" title="1">{
+                                count = len(ids)
+                        }</span>
+                }
+        case NotEquals:<span class="cov0" title="0">
+                if v, ok := value.(bool); ok </span><span class="cov0" title="0">{
+                        if ids, exists := index[!v]; exists </span><span class="cov0" title="0">{
+                                count = len(ids)
+                        }</span>
+                }
+        default:<span class="cov0" title="0">
+                for _, ids := range index </span><span class="cov0" title="0">{
+                        count += len(ids)
+                }</span>
+        }
+        <span class="cov8" title="1">return count</span>
+}
+
+func estimateTimeRows(op Operator, value any, index map[time.Time]map[uuid.UUID]bool) int <span class="cov0" title="0">{
+        count := 0
+        switch op </span>{
+        case Between, NotBetween:<span class="cov0" title="0">
+                if vals, ok := value.([]time.Time); ok &amp;&amp; len(vals) == 2 </span><span class="cov0" title="0">{
+                        start, end := vals[0], vals[1]
+                        if start.After(end) </span><span class="cov0" title="0">{
+                                start, end = end, start
+                        }</span>
+                        <span class="cov0" title="0">for key, ids := range index </span><span class="cov0" title="0">{
+                                if op == Between &amp;&amp; !key.Before(start) &amp;&amp; !key.After(end) </span><span class="cov0" title="0">{
+                                        count += len(ids)
+                                }</span> else<span class="cov0" title="0"> if op == NotBetween &amp;&amp; (key.Before(start) || key.After(end)) </span><span class="cov0" title="0">{
+                                        count += len(ids)
+                                }</span>
+                        }
+                }
+        default:<span class="cov0" title="0">
+                for _, ids := range index </span><span class="cov0" title="0">{
+                        count += len(ids)
+                }</span>
+        }
+        <span class="cov0" title="0">return count</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package mframe
+
+import (
+        "github.com/google/uuid"
+        "log"
+        "net"
+        "regexp"
+        "strings"
+        "time"
+)
+
+// Operator defines a set of comparison or matching operations that can be applied in conditional logic.
+type Operator int
+
+const (
+        Equals        Operator = 1
+        NotEquals     Operator = 2
+        Major         Operator = 3 // Deprecated: Use Greater instead
+        Minor         Operator = 4 // Deprecated: Use Less instead
+        MajorEquals   Operator = 5 // Deprecated: Use GreaterOrEqual instead
+        MinorEquals   Operator = 6 // Deprecated: Use LessOrEqual instead
+        InList        Operator = 7
+        NotInList     Operator = 8
+        RegExp        Operator = 9
+        NotRegExp     Operator = 10
+        InCIDR        Operator = 11
+        NotInCIDR     Operator = 12
+        Contains      Operator = 13
+        NotContains   Operator = 14
+        StartsWith    Operator = 15
+        NotStartsWith Operator = 16
+        EndsWith      Operator = 17
+        NotEndsWith   Operator = 18
+        Between       Operator = 19
+        NotBetween    Operator = 20
+
+        // New names for clarity
+        Greater        = Major
+        Less           = Minor
+        GreaterOrEqual = MajorEquals
+        LessOrEqual    = MinorEquals
+)
+
+// Filter applies a filtering operation to the DataFrame based on the operator, key, value, and optional parameters.
+// operator specifies the condition (e.g., Equals, NotEquals) to filter data.
+// key indicates the column to filter on.
+// value represents the target value(s) used for filtering.
+// options is an optional map to specify additional filter settings (e.g., case sensitivity).
+// Returns a new DataFrame containing the filtered rows.
+//
+// Available Operators:
+// - Equals: Available for numeric, string and bool types.
+// - NotEquals: Available for numeric, string and bool types.
+// - Greater (Major): Available for numeric types.
+// - Less (Minor): Available for numeric types.
+// - GreaterOrEqual (MajorEquals): Available for numeric types.
+// - LessOrEqual (MinorEquals): Available for numeric types.
+// - Between: Available for numeric and time types.
+//   - For numeric: Value must be []float64{min, max}
+//   - For time: Value must be []time.Time{startTime, endTime}
+//
+// - NotBetween: Available for numeric and time types.
+//   - For numeric: Value must be []float64{min, max}
+//   - For time: Value must be []time.Time{startTime, endTime}
+//
+// - InList: Available for numeric and string types.
+// - NotInList: Available for numeric and string types.
+// - RegExp: Available for string types.
+// - NotRegExp Available for string types.
+// - InCIDR Available for string types.
+// - NotInCIDR Available for string types.
+// - Contains Available for string types.
+// - NotContains Available for string types.
+// - StartsWith Available for string types.
+// - NotStartsWith Available for string types.
+// - EndsWith Available for string types.
+// - NotEndsWith Available for string types.
+func (d *DataFrame) Filter(operator Operator, key KeyName, value any, options map[FilterOption]bool) *DataFrame <span class="cov8" title="1">{
+        d.Locker.RLock()
+        defer d.Locker.RUnlock()
+
+        var keys = make(map[KeyName]KeyType)
+
+        if ContainsF(string(key), "^") || ContainsF(string(key), "[") || ContainsF(string(key), "(") </span><span class="cov0" title="0">{
+                re, err := d.getCompiledRegex(string(key))
+                if err == nil </span><span class="cov0" title="0">{
+                        for dataFrameKey, keyType := range d.Keys </span><span class="cov0" title="0">{
+                                if re.MatchString(string(dataFrameKey)) </span><span class="cov0" title="0">{
+                                        keys[dataFrameKey] = keyType
+                                }</span>
+                        }
+                }
+        } else<span class="cov8" title="1"> {
+                keys[key] = d.Keys[key]
+        }</span>
+
+        <span class="cov8" title="1">var results = new(DataFrame)
+        results.Init(d.TTL)
+
+        for dataFrameKey, keyType := range keys </span><span class="cov8" title="1">{
+                switch keyType </span>{
+                case Numeric:<span class="cov8" title="1">
+                        switch operator </span>{
+                        case Equals:<span class="cov8" title="1">
+                                floatValue, ok := value.(float64)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">if ids, ok := d.Numerics[dataFrameKey][floatValue]; ok </span><span class="cov8" title="1">{
+                                        for id := range ids </span><span class="cov8" title="1">{
+                                                results.Insert(d.Data[id])
+                                        }</span>
+                                }
+                        case NotEquals:<span class="cov0" title="0">
+                                floatValue, ok := value.(float64)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov0" title="0">if keyValues, ok := d.Numerics[dataFrameKey]; ok </span><span class="cov0" title="0">{
+                                        for keyValue, ids := range keyValues </span><span class="cov0" title="0">{
+                                                if EqualsF(keyValue, floatValue) </span><span class="cov0" title="0">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov0" title="0">for id := range ids </span><span class="cov0" title="0">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case Major:<span class="cov8" title="1">
+                                floatValue, ok := value.(float64)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Numerics[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if !GreaterThanF(keyValue, floatValue) </span><span class="cov8" title="1">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case Minor:<span class="cov8" title="1">
+                                floatValue, ok := value.(float64)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Numerics[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if !GreaterThanF(floatValue, keyValue) </span><span class="cov8" title="1">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case MajorEquals:<span class="cov8" title="1">
+                                floatValue, ok := value.(float64)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Numerics[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if !EqualsF(keyValue, floatValue) &amp;&amp; !GreaterThanF(keyValue, floatValue) </span><span class="cov8" title="1">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case MinorEquals:<span class="cov8" title="1">
+                                floatValue, ok := value.(float64)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Numerics[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if !EqualsF(keyValue, floatValue) &amp;&amp; GreaterThanF(keyValue, floatValue) </span><span class="cov8" title="1">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case InList:<span class="cov8" title="1">
+                                floatValues, ok := value.([]float64)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Numerics[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if !InListF(keyValue, floatValues) </span><span class="cov8" title="1">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case NotInList:<span class="cov8" title="1">
+                                floatValues, ok := value.([]float64)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Numerics[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if InListF(keyValue, floatValues) </span><span class="cov8" title="1">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case Between:<span class="cov8" title="1">
+                                rangeValues, ok := value.([]float64)
+                                if !ok || len(rangeValues) != 2 </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">min, max := rangeValues[0], rangeValues[1]
+                                if min &gt; max </span><span class="cov0" title="0">{
+                                        min, max = max, min
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Numerics[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if keyValue &lt; min || keyValue &gt; max </span><span class="cov8" title="1">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case NotBetween:<span class="cov8" title="1">
+                                rangeValues, ok := value.([]float64)
+                                if !ok || len(rangeValues) != 2 </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">min, max := rangeValues[0], rangeValues[1]
+                                if min &gt; max </span><span class="cov0" title="0">{
+                                        min, max = max, min
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Numerics[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if keyValue &gt;= min &amp;&amp; keyValue &lt;= max </span><span class="cov8" title="1">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        default:<span class="cov0" title="0">
+                                log.Printf("incorrect operator '%v' for key '%s' of type '%v'", operator, key, keyType)</span>
+                        }
+                case String:<span class="cov8" title="1">
+                        switch operator </span>{
+                        case Equals:<span class="cov8" title="1">
+                                stringValue, ok := value.(string)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Strings[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if sensitive, ok := options[CaseSensitive]; ok &amp;&amp; !sensitive </span><span class="cov8" title="1">{
+                                                        keyValue = strings.ToLower(keyValue)
+                                                        stringValue = strings.ToLower(stringValue)
+                                                }</span>
+
+                                                <span class="cov8" title="1">if !EqualsF(keyValue, stringValue) </span><span class="cov8" title="1">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case NotEquals:<span class="cov8" title="1">
+                                stringValue, ok := value.(string)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Strings[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if sensitive, ok := options[CaseSensitive]; ok &amp;&amp; !sensitive </span><span class="cov0" title="0">{
+                                                        keyValue = strings.ToLower(keyValue)
+                                                        stringValue = strings.ToLower(stringValue)
+                                                }</span>
+
+                                                <span class="cov8" title="1">if EqualsF(keyValue, stringValue) </span><span class="cov8" title="1">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case RegExp:<span class="cov8" title="1">
+                                stringValue, ok := value.(string)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Strings[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        re, err := d.getCompiledRegex(stringValue)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                continue</span>
+                                        }
+                                        <span class="cov8" title="1">for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if !re.MatchString(keyValue) </span><span class="cov0" title="0">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case NotRegExp:<span class="cov8" title="1">
+                                stringValue, ok := value.(string)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Strings[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        re, err := d.getCompiledRegex(stringValue)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                continue</span>
+                                        }
+                                        <span class="cov8" title="1">for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if re.MatchString(keyValue) </span><span class="cov0" title="0">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case InList:<span class="cov0" title="0">
+                                stringValues, ok := value.([]string)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov0" title="0">if keyValues, ok := d.Strings[dataFrameKey]; ok </span><span class="cov0" title="0">{
+                                        for keyValue, ids := range keyValues </span><span class="cov0" title="0">{
+                                                if sensitive, ok := options[CaseSensitive]; ok &amp;&amp; !sensitive </span><span class="cov0" title="0">{
+                                                        keyValue = strings.ToLower(keyValue)
+
+                                                        tmpStringValues := make([]string, 0, len(stringValues))
+                                                        for _, v := range stringValues </span><span class="cov0" title="0">{
+                                                                tmpStringValues = append(tmpStringValues, strings.ToLower(v))
+                                                        }</span>
+                                                        <span class="cov0" title="0">stringValues = tmpStringValues</span>
+                                                }
+
+                                                <span class="cov0" title="0">if !InListF(keyValue, stringValues) </span><span class="cov0" title="0">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov0" title="0">for id := range ids </span><span class="cov0" title="0">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case NotInList:<span class="cov0" title="0">
+                                stringValues, ok := value.([]string)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov0" title="0">if keyValues, ok := d.Strings[dataFrameKey]; ok </span><span class="cov0" title="0">{
+                                        for keyValue, ids := range keyValues </span><span class="cov0" title="0">{
+                                                if sensitive, ok := options[CaseSensitive]; ok &amp;&amp; !sensitive </span><span class="cov0" title="0">{
+                                                        keyValue = strings.ToLower(keyValue)
+
+                                                        tmpStringValues := make([]string, 0, len(stringValues))
+                                                        for _, v := range stringValues </span><span class="cov0" title="0">{
+                                                                tmpStringValues = append(tmpStringValues, strings.ToLower(v))
+                                                        }</span>
+                                                        <span class="cov0" title="0">stringValues = tmpStringValues</span>
+                                                }
+
+                                                <span class="cov0" title="0">if InListF(keyValue, stringValues) </span><span class="cov0" title="0">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov0" title="0">for id := range ids </span><span class="cov0" title="0">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case InCIDR:<span class="cov8" title="1">
+                                stringValue, ok := value.(string)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Strings[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if m, e := InCIDRF(keyValue, stringValue); e != nil || !m </span><span class="cov8" title="1">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case NotInCIDR:<span class="cov8" title="1">
+                                stringValue, ok := value.(string)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Strings[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if m, e := InCIDRF(keyValue, stringValue); e != nil || m </span><span class="cov8" title="1">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case Contains:<span class="cov8" title="1">
+                                stringValue, ok := value.(string)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Strings[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if sensitive, ok := options[CaseSensitive]; ok &amp;&amp; !sensitive </span><span class="cov0" title="0">{
+                                                        keyValue = strings.ToLower(keyValue)
+                                                        stringValue = strings.ToLower(stringValue)
+                                                }</span>
+
+                                                <span class="cov8" title="1">if !ContainsF(keyValue, stringValue) </span><span class="cov8" title="1">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case NotContains:<span class="cov8" title="1">
+                                stringValue, ok := value.(string)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Strings[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if sensitive, ok := options[CaseSensitive]; ok &amp;&amp; !sensitive </span><span class="cov0" title="0">{
+                                                        keyValue = strings.ToLower(keyValue)
+                                                        stringValue = strings.ToLower(stringValue)
+                                                }</span>
+
+                                                <span class="cov8" title="1">if ContainsF(keyValue, stringValue) </span><span class="cov8" title="1">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case StartsWith:<span class="cov8" title="1">
+                                stringValue, ok := value.(string)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Strings[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if sensitive, ok := options[CaseSensitive]; ok &amp;&amp; !sensitive </span><span class="cov0" title="0">{
+                                                        keyValue = strings.ToLower(keyValue)
+                                                        stringValue = strings.ToLower(stringValue)
+                                                }</span>
+
+                                                <span class="cov8" title="1">if !HasPrefixF(keyValue, stringValue) </span><span class="cov0" title="0">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case NotStartsWith:<span class="cov8" title="1">
+                                stringValue, ok := value.(string)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Strings[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if sensitive, ok := options[CaseSensitive]; ok &amp;&amp; !sensitive </span><span class="cov0" title="0">{
+                                                        keyValue = strings.ToLower(keyValue)
+                                                        stringValue = strings.ToLower(stringValue)
+                                                }</span>
+
+                                                <span class="cov8" title="1">if HasPrefixF(keyValue, stringValue) </span><span class="cov0" title="0">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case EndsWith:<span class="cov8" title="1">
+                                stringValue, ok := value.(string)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Strings[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if sensitive, ok := options[CaseSensitive]; ok &amp;&amp; !sensitive </span><span class="cov0" title="0">{
+                                                        keyValue = strings.ToLower(keyValue)
+                                                        stringValue = strings.ToLower(stringValue)
+                                                }</span>
+
+                                                <span class="cov8" title="1">if !HasSuffixF(keyValue, stringValue) </span><span class="cov8" title="1">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case NotEndsWith:<span class="cov8" title="1">
+                                stringValue, ok := value.(string)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Strings[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if sensitive, ok := options[CaseSensitive]; ok &amp;&amp; !sensitive </span><span class="cov0" title="0">{
+                                                        keyValue = strings.ToLower(keyValue)
+                                                        stringValue = strings.ToLower(stringValue)
+                                                }</span>
+
+                                                <span class="cov8" title="1">if HasSuffixF(keyValue, stringValue) </span><span class="cov8" title="1">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        default:<span class="cov0" title="0">
+                                log.Printf("incorrect operator '%v' for key '%s' of type '%v'", operator, key, keyType)</span>
+                        }
+                case Boolean:<span class="cov0" title="0">
+                        boolValue, ok := value.(bool)
+                        if !ok </span><span class="cov0" title="0">{
+                                return results
+                        }</span>
+                        <span class="cov0" title="0">switch operator </span>{
+                        case Equals:<span class="cov0" title="0">
+                                if ids, ok := d.Booleans[dataFrameKey][boolValue]; ok </span><span class="cov0" title="0">{
+                                        for id := range ids </span><span class="cov0" title="0">{
+                                                results.Insert(d.Data[id])
+                                        }</span>
+                                }
+                        case NotEquals:<span class="cov0" title="0">
+                                if keyValues, ok := d.Booleans[dataFrameKey]; ok </span><span class="cov0" title="0">{
+                                        for keyValue, ids := range keyValues </span><span class="cov0" title="0">{
+                                                if EqualsF(boolValue, keyValue) </span><span class="cov0" title="0">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov0" title="0">for id := range ids </span><span class="cov0" title="0">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        default:<span class="cov0" title="0">
+                                log.Printf("incorrect operator '%v' for key '%s' of type '%v'", operator, key, keyType)</span>
+                        }
+                case Time:<span class="cov8" title="1">
+                        switch operator </span>{
+                        case Between:<span class="cov8" title="1">
+                                timeValues, ok := value.([]time.Time)
+                                if !ok || len(timeValues) != 2 </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">startTime, endTime := timeValues[0], timeValues[1]
+                                if startTime.After(endTime) </span><span class="cov8" title="1">{
+                                        startTime, endTime = endTime, startTime
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Times[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if keyValue.Before(startTime) || keyValue.After(endTime) </span><span class="cov8" title="1">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        case NotBetween:<span class="cov8" title="1">
+                                timeValues, ok := value.([]time.Time)
+                                if !ok || len(timeValues) != 2 </span><span class="cov0" title="0">{
+                                        return results
+                                }</span>
+                                <span class="cov8" title="1">startTime, endTime := timeValues[0], timeValues[1]
+                                if startTime.After(endTime) </span><span class="cov0" title="0">{
+                                        startTime, endTime = endTime, startTime
+                                }</span>
+                                <span class="cov8" title="1">if keyValues, ok := d.Times[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                        for keyValue, ids := range keyValues </span><span class="cov8" title="1">{
+                                                if !keyValue.Before(startTime) &amp;&amp; !keyValue.After(endTime) </span><span class="cov8" title="1">{
+                                                        continue</span>
+                                                }
+
+                                                <span class="cov8" title="1">for id := range ids </span><span class="cov8" title="1">{
+                                                        results.Insert(d.Data[id])
+                                                }</span>
+                                        }
+                                }
+                        default:<span class="cov0" title="0">
+                                log.Printf("incorrect operator '%v' for key '%s' of type '%v'", operator, key, keyType)</span>
+                        }
+                }
+        }
+
+        <span class="cov8" title="1">return results</span>
+}
+
+// FindFirstByKey retrieves the first occurrence of a key within a DataFrame and returns its UUID, key name, and value.
+func (d *DataFrame) FindFirstByKey(key KeyName) (uuid.UUID, KeyName, interface{}) <span class="cov8" title="1">{
+        d.Locker.RLock()
+        defer d.Locker.RUnlock()
+
+        var keys = make(map[KeyName]KeyType)
+
+        if ContainsF(string(key), "^") || ContainsF(string(key), "[") || ContainsF(string(key), "(") </span><span class="cov0" title="0">{
+                re, err := d.getCompiledRegex(string(key))
+                if err == nil </span><span class="cov0" title="0">{
+                        for dataFrameKey, keyType := range d.Keys </span><span class="cov0" title="0">{
+                                if re.MatchString(string(dataFrameKey)) </span><span class="cov0" title="0">{
+                                        keys[dataFrameKey] = keyType
+                                }</span>
+                        }
+                }
+        } else<span class="cov8" title="1"> {
+                keys[key] = d.Keys[key]
+        }</span>
+
+        <span class="cov8" title="1">for dataFrameKey, keyType := range keys </span><span class="cov8" title="1">{
+                switch keyType </span>{
+                case Numeric:<span class="cov0" title="0">
+                        if keyValues, ok := d.Numerics[dataFrameKey]; ok </span><span class="cov0" title="0">{
+                                for _, keyValue := range keyValues </span><span class="cov0" title="0">{
+                                        for row := range keyValue </span><span class="cov0" title="0">{
+                                                return row, dataFrameKey, d.Data[row][dataFrameKey]
+                                        }</span>
+                                }
+                        }
+                case String:<span class="cov8" title="1">
+                        if keyValues, ok := d.Strings[dataFrameKey]; ok </span><span class="cov8" title="1">{
+                                for _, keyValue := range keyValues </span><span class="cov8" title="1">{
+                                        for row := range keyValue </span><span class="cov8" title="1">{
+                                                return row, dataFrameKey, d.Data[row][dataFrameKey]
+                                        }</span>
+                                }
+                        }
+                case Boolean:<span class="cov0" title="0">
+                        if keyValues, ok := d.Booleans[dataFrameKey]; ok </span><span class="cov0" title="0">{
+                                for _, keyValue := range keyValues </span><span class="cov0" title="0">{
+                                        for row := range keyValue </span><span class="cov0" title="0">{
+                                                return row, dataFrameKey, d.Data[row][dataFrameKey]
+                                        }</span>
+                                }
+                        }
+                case Time:<span class="cov0" title="0">
+                        if keyValues, ok := d.Times[dataFrameKey]; ok </span><span class="cov0" title="0">{
+                                for _, keyValue := range keyValues </span><span class="cov0" title="0">{
+                                        for row := range keyValue </span><span class="cov0" title="0">{
+                                                return row, dataFrameKey, d.Data[row][dataFrameKey]
+                                        }</span>
+                                }
+                        }
+                }
+        }
+
+        <span class="cov8" title="1">return uuid.Nil, "", nil</span>
+}
+
+// EqualsF compares two values of type float64, string, or bool and returns true if they are equal, otherwise false.
+func EqualsF[v float64 | string | bool](left, right v) bool <span class="cov8" title="1">{
+        return left == right
+}</span>
+
+// MatchesRegExpF checks if a given string matches a specified regular expression and returns a boolean or an error.
+func MatchesRegExpF(value, regExp string) (bool, error) <span class="cov0" title="0">{
+        re, err := regexp.Compile(regExp)
+        if err != nil </span><span class="cov0" title="0">{
+                return false, err
+        }</span>
+
+        <span class="cov0" title="0">if re.MatchString(value) </span><span class="cov0" title="0">{
+                return true, nil
+        }</span>
+
+        <span class="cov0" title="0">return false, nil</span>
+}
+
+// GreaterThanF compares two float64 numbers and returns true if the first number is greater than the second.
+func GreaterThanF(left, right float64) bool <span class="cov8" title="1">{
+        return left &gt; right
+}</span>
+
+// InListF checks if a given value of type float64 or string is present in the provided list and returns true if found.
+func InListF[v float64 | string](value v, list []v) bool <span class="cov8" title="1">{
+        for _, element := range list </span><span class="cov8" title="1">{
+                if element == value </span><span class="cov8" title="1">{
+                        return true
+                }</span>
+        }
+        <span class="cov8" title="1">return false</span>
+}
+
+// InCIDRF checks if an IP address (value) belongs to a given CIDR range and returns a boolean. Errors on invalid CIDR.
+func InCIDRF(value, cidr string) (bool, error) <span class="cov8" title="1">{
+        _, subnet, err := net.ParseCIDR(cidr)
+        if err != nil </span><span class="cov0" title="0">{
+                return false, err
+        }</span>
+
+        <span class="cov8" title="1">ip := net.ParseIP(value)
+        if ip != nil </span><span class="cov8" title="1">{
+                if subnet.Contains(ip) </span><span class="cov8" title="1">{
+                        return true, nil
+                }</span>
+        }
+
+        <span class="cov8" title="1">return false, nil</span>
+}
+
+// ContainsF checks if the `substring` is present within the `value` and returns true if found, otherwise false.
+func ContainsF(value, substring string) bool <span class="cov8" title="1">{
+        return strings.Contains(value, substring)
+}</span>
+
+// HasPrefixF checks if the given string 'value' starts with the specified 'prefix' and returns true if it does.
+func HasPrefixF(value, prefix string) bool <span class="cov8" title="1">{
+        return strings.HasPrefix(value, prefix)
+}</span>
+
+// HasSuffixF checks if the given string 'value' ends with the specified 'suffix'. Returns true if it does, otherwise false.
+func HasSuffixF(value, suffix string) bool <span class="cov8" title="1">{
+        return strings.HasSuffix(value, suffix)
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package mframe
+
+import (
+        "fmt"
+        "log"
+        "reflect"
+        "time"
+
+        "github.com/google/uuid"
+)
+
+// index processes key-value pairs recursively to index data into the DataFrame,
+// handling various data types and nested structures.
+// Note: Errors during indexing are logged but do not stop the indexing process.
+func (d *DataFrame) index(kv map[KeyName]interface{}, wrapKey KeyName, id uuid.UUID, row *Row) <span class="cov8" title="1">{
+        for kvKey, kvValue := range kv </span><span class="cov8" title="1">{
+                if wrapKey != "" </span><span class="cov0" title="0">{
+                        kvKey = KeyName(fmt.Sprintf("%s.%s", wrapKey, kvKey))
+                }</span>
+
+                <span class="cov8" title="1">kvValueType := reflect.TypeOf(kvValue)
+                if kvValueType == nil </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">switch kvValueType.String() </span>{
+                case "map[string]interface {}":<span class="cov0" title="0">
+                        strMap := kvValue.(map[string]interface{})
+                        newKv := make(map[KeyName]interface{})
+                        for k, v := range strMap </span><span class="cov0" title="0">{
+                                newKv[KeyName(k)] = v
+                        }</span>
+                        <span class="cov0" title="0">d.index(newKv, kvKey, id, row)</span>
+                case "[]interface {}":<span class="cov0" title="0">
+                        for listKey, listValue := range kvValue.([]interface{}) </span><span class="cov0" title="0">{
+                                newKv := map[KeyName]interface{}{KeyName(fmt.Sprint(listKey)): listValue}
+                                d.index(newKv, kvKey, id, row)
+                        }</span>
+                case "string":<span class="cov8" title="1">
+                        err := d.addMapping(kvKey, String)
+                        if err != nil </span><span class="cov0" title="0">{
+                                log.Printf("error adding mapping for key '%s': %s", kvKey, err.Error())
+                                continue</span>
+                        }
+
+                        <span class="cov8" title="1">(*row)[kvKey] = kvValue
+
+                        if len(d.Strings[kvKey]) == 0 </span><span class="cov8" title="1">{
+                                d.Strings[kvKey] = make(map[string]map[uuid.UUID]bool)
+                        }</span>
+
+                        <span class="cov8" title="1">if len(d.Strings[kvKey][kvValue.(string)]) == 0 </span><span class="cov8" title="1">{
+                                d.Strings[kvKey][kvValue.(string)] = make(map[uuid.UUID]bool)
+                        }</span>
+
+                        <span class="cov8" title="1">d.Strings[kvKey][kvValue.(string)][id] = true</span>
+                case "float64":<span class="cov8" title="1">
+                        d.num(kvKey, kvValue.(float64), id, row)</span>
+                case "int64":<span class="cov8" title="1">
+                        d.num(kvKey, float64(kvValue.(int64)), id, row)</span>
+                case "float32":<span class="cov8" title="1">
+                        d.num(kvKey, float64(kvValue.(float32)), id, row)</span>
+                case "int":<span class="cov8" title="1">
+                        d.num(kvKey, float64(kvValue.(int)), id, row)</span>
+                case "int32":<span class="cov8" title="1">
+                        d.num(kvKey, float64(kvValue.(int32)), id, row)</span>
+                case "int16":<span class="cov8" title="1">
+                        d.num(kvKey, float64(kvValue.(int16)), id, row)</span>
+                case "int8":<span class="cov8" title="1">
+                        d.num(kvKey, float64(kvValue.(int8)), id, row)</span>
+                case "uint":<span class="cov0" title="0">
+                        d.num(kvKey, float64(kvValue.(uint)), id, row)</span>
+                case "uint64":<span class="cov8" title="1">
+                        d.num(kvKey, float64(kvValue.(uint64)), id, row)</span>
+                case "uint32":<span class="cov8" title="1">
+                        d.num(kvKey, float64(kvValue.(uint32)), id, row)</span>
+                case "uint16":<span class="cov8" title="1">
+                        d.num(kvKey, float64(kvValue.(uint16)), id, row)</span>
+                case "uint8":<span class="cov8" title="1">
+                        d.num(kvKey, float64(kvValue.(uint8)), id, row)</span>
+                case "bool":<span class="cov8" title="1">
+                        err := d.addMapping(kvKey, Boolean)
+                        if err != nil </span><span class="cov0" title="0">{
+                                log.Printf("error adding mapping for key '%s': %s", kvKey, err.Error())
+                                continue</span>
+                        }
+
+                        <span class="cov8" title="1">(*row)[kvKey] = kvValue
+
+                        if len(d.Booleans[kvKey]) == 0 </span><span class="cov8" title="1">{
+                                d.Booleans[kvKey] = make(map[bool]map[uuid.UUID]bool)
+                        }</span>
+
+                        <span class="cov8" title="1">if len(d.Booleans[kvKey][kvValue.(bool)]) == 0 </span><span class="cov8" title="1">{
+                                d.Booleans[kvKey][kvValue.(bool)] = make(map[uuid.UUID]bool)
+                        }</span>
+
+                        <span class="cov8" title="1">d.Booleans[kvKey][kvValue.(bool)][id] = true</span>
+                case "uuid.UUID":<span class="cov0" title="0">
+                        err := d.addMapping(kvKey, String)
+                        if err != nil </span><span class="cov0" title="0">{
+                                log.Printf("error adding mapping for key '%s': %s", kvKey, err.Error())
+                                continue</span>
+                        }
+
+                        <span class="cov0" title="0">uuidValue := kvValue.(uuid.UUID).String()
+                        (*row)[kvKey] = uuidValue
+
+                        if len(d.Strings[kvKey]) == 0 </span><span class="cov0" title="0">{
+                                d.Strings[kvKey] = make(map[string]map[uuid.UUID]bool)
+                        }</span>
+
+                        <span class="cov0" title="0">if len(d.Strings[kvKey][uuidValue]) == 0 </span><span class="cov0" title="0">{
+                                d.Strings[kvKey][uuidValue] = make(map[uuid.UUID]bool)
+                        }</span>
+
+                        <span class="cov0" title="0">d.Strings[kvKey][uuidValue][id] = true</span>
+                case "time.Time":<span class="cov8" title="1">
+                        err := d.addMapping(kvKey, Time)
+                        if err != nil </span><span class="cov0" title="0">{
+                                log.Printf("error adding mapping for key '%s': %s", kvKey, err.Error())
+                                continue</span>
+                        }
+
+                        <span class="cov8" title="1">timeValue := kvValue.(time.Time)
+
+                        if len(d.Times[kvKey]) == 0 </span><span class="cov8" title="1">{
+                                d.Times[kvKey] = make(map[time.Time]map[uuid.UUID]bool)
+                        }</span>
+
+                        <span class="cov8" title="1">if len(d.Times[kvKey][timeValue]) == 0 </span><span class="cov8" title="1">{
+                                d.Times[kvKey][timeValue] = make(map[uuid.UUID]bool)
+                        }</span>
+
+                        <span class="cov8" title="1">d.Times[kvKey][timeValue][id] = true</span>
+                default:<span class="cov0" title="0">
+                        log.Printf("unknown field type: %s", kvValueType.String())</span>
+                }
+        }
+}
+
+// num adds a numeric value to the DataFrame using the specified key, value, id, and updates the provided row.
+func (d *DataFrame) num(keyName KeyName, value float64, id uuid.UUID, row *Row) <span class="cov8" title="1">{
+        err := d.addMapping(keyName, Numeric)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Printf("error adding mapping for key '%s': %s", keyName, err.Error())
+                return
+        }</span>
+
+        <span class="cov8" title="1">(*row)[keyName] = value
+
+        if len(d.Numerics[keyName]) == 0 </span><span class="cov8" title="1">{
+                d.Numerics[keyName] = make(map[float64]map[uuid.UUID]bool)
+        }</span>
+
+        <span class="cov8" title="1">if len(d.Numerics[keyName][value]) == 0 </span><span class="cov8" title="1">{
+                d.Numerics[keyName][value] = make(map[uuid.UUID]bool)
+        }</span>
+
+        <span class="cov8" title="1">d.Numerics[keyName][value][id] = true</span>
+}
+
+// Insert adds a new row to the DataFrame using the provided data,
+// generating a unique ID and applying the configured TTL.
+func (d *DataFrame) Insert(data map[KeyName]interface{}) <span class="cov8" title="1">{
+        d.Locker.Lock()
+        defer d.Locker.Unlock()
+
+        id := uuid.New()
+        var row = make(Row)
+        d.index(data, "", id, &amp;row)
+        d.Data[id] = row
+        d.ExpireAt[id] = time.Now().UTC().Add(d.TTL)
+}</span>
+
+// InsertWithError adds a new row to the DataFrame and returns an error if the data is invalid
+func (d *DataFrame) InsertWithError(data map[KeyName]interface{}) error <span class="cov8" title="1">{
+        if data == nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("cannot insert nil data")
+        }</span>
+        <span class="cov8" title="1">if len(data) == 0 </span><span class="cov8" title="1">{
+                return fmt.Errorf("cannot insert empty data")
+        }</span>
+
+        <span class="cov8" title="1">d.Insert(data)
+        return nil</span>
+}
+
+// InsertWithID adds a row to the DataFrame with a specific ID.
+// This method assumes the caller already holds the necessary locks.
+func (d *DataFrame) insertWithIDUnlocked(id uuid.UUID, data Row) <span class="cov0" title="0">{
+        d.Data[id] = data
+        d.ExpireAt[id] = time.Now().UTC().Add(d.TTL)
+}</span>
+
+// InsertBatch adds multiple rows to the DataFrame in a single operation,
+// reducing lock contention for bulk inserts.
+func (d *DataFrame) InsertBatch(rows []map[KeyName]interface{}) error <span class="cov8" title="1">{
+        if len(rows) == 0 </span><span class="cov8" title="1">{
+                return fmt.Errorf("cannot insert empty batch")
+        }</span>
+
+        <span class="cov8" title="1">d.Locker.Lock()
+        defer d.Locker.Unlock()
+
+        for _, data := range rows </span><span class="cov8" title="1">{
+                if data == nil </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+                <span class="cov8" title="1">if len(data) == 0 </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">id := uuid.New()
+                var row = make(Row)
+                d.index(data, "", id, &amp;row)
+                d.Data[id] = row
+                d.ExpireAt[id] = time.Now().UTC().Add(d.TTL)</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// InsertBatchWithIDs adds multiple rows with specific IDs to the DataFrame.
+func (d *DataFrame) InsertBatchWithIDs(entries map[uuid.UUID]map[KeyName]interface{}) error <span class="cov8" title="1">{
+        if len(entries) == 0 </span><span class="cov8" title="1">{
+                return fmt.Errorf("cannot insert empty batch")
+        }</span>
+
+        <span class="cov8" title="1">d.Locker.Lock()
+        defer d.Locker.Unlock()
+
+        for id, data := range entries </span><span class="cov8" title="1">{
+                if data == nil || len(data) == 0 </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">var row = make(Row)
+                d.index(data, "", id, &amp;row)
+                d.Data[id] = row
+                d.ExpireAt[id] = time.Now().UTC().Add(d.TTL)</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// addMapping maps a keyName to a specified keyType in the DataFrame.
+// Returns an error if the keyName already has a different keyType.
+func (d *DataFrame) addMapping(keyName KeyName, keyType KeyType) error <span class="cov8" title="1">{
+        if key, ok := d.Keys[keyName]; ok &amp;&amp; key != keyType </span><span class="cov0" title="0">{
+                return fmt.Errorf("cannot map key '%s' as '%v' because it is already mapped as type '%v'", keyName, keyType, d.Keys[keyName])
+        }</span>
+
+        <span class="cov8" title="1">d.Keys[keyName] = keyType
+
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package mframe
+
+import (
+        "github.com/montanaflynn/stats"
+)
+
+// Count returns the number of elements in the DataFrame.
+func (d *DataFrame) Count() int <span class="cov8" title="1">{
+        d.Locker.RLock()
+        defer d.Locker.RUnlock()
+        return len(d.Data)
+}</span>
+
+// CountUnique counts the occurrences of unique values in the specified field and returns a map of value to its count.
+func (d *DataFrame) CountUnique(field KeyName) map[interface{}]int <span class="cov8" title="1">{
+        d.Locker.RLock()
+        defer d.Locker.RUnlock()
+        var count = make(map[interface{}]int)
+        for _, v := range d.Data </span><span class="cov8" title="1">{
+                if _, ok := count[v[field]]; !ok </span><span class="cov8" title="1">{
+                        count[v[field]] = 0
+                }</span>
+                <span class="cov8" title="1">count[v[field]] += 1</span>
+
+        }
+
+        <span class="cov8" title="1">return count</span>
+}
+
+// Sum calculates the sum of all float64 values in the specified field of the DataFrame and returns the result.
+func (d *DataFrame) Sum(field KeyName) (float64, error) <span class="cov8" title="1">{
+        d.Locker.RLock()
+        defer d.Locker.RUnlock()
+        return stats.Sum(d.sliceOfFloat64Unlocked(field))
+}</span>
+
+// Average calculates the mean of the values in the specified field and returns it as a float64 or an error if it fails.
+func (d *DataFrame) Average(field KeyName) (float64, error) <span class="cov8" title="1">{
+        d.Locker.RLock()
+        defer d.Locker.RUnlock()
+        return stats.Mean(d.sliceOfFloat64Unlocked(field))
+}</span>
+
+// Median calculates the median of the values in the specified field and returns it as a float64 along with an error if any.
+func (d *DataFrame) Median(field KeyName) (float64, error) <span class="cov8" title="1">{
+        d.Locker.RLock()
+        defer d.Locker.RUnlock()
+        return stats.Median(d.sliceOfFloat64Unlocked(field))
+}</span>
+
+// Max calculates and returns the maximum value from the specified field in the DataFrame.
+func (d *DataFrame) Max(field KeyName) (float64, error) <span class="cov8" title="1">{
+        d.Locker.RLock()
+        defer d.Locker.RUnlock()
+        return stats.Max(d.sliceOfFloat64Unlocked(field))
+}</span>
+
+// Min computes the minimum value of the specified field in the DataFrame
+// and returns it along with any error encountered.
+func (d *DataFrame) Min(field KeyName) (float64, error) <span class="cov8" title="1">{
+        d.Locker.RLock()
+        defer d.Locker.RUnlock()
+        return stats.Min(d.sliceOfFloat64Unlocked(field))
+}</span>
+
+// Variance computes the variance for the specified field in the DataFrame and returns it as a float64 value.
+func (d *DataFrame) Variance(field KeyName) (float64, error) <span class="cov8" title="1">{
+        d.Locker.RLock()
+        defer d.Locker.RUnlock()
+        return stats.Variance(d.sliceOfFloat64Unlocked(field))
+}</span>
+
+// StandardDeviation calculates the standard deviation of the values in the specified field
+// and returns it as a float64 along with any error.
+func (d *DataFrame) StandardDeviation(field KeyName) (float64, error) <span class="cov8" title="1">{
+        d.Locker.RLock()
+        defer d.Locker.RUnlock()
+        return stats.StandardDeviation(d.sliceOfFloat64Unlocked(field))
+}</span>
+
+// Percentile calculates the percentile value for the specified field and percentile (0-100)
+// and returns it as a float64 along with any error.
+func (d *DataFrame) Percentile(field KeyName, percent float64) (float64, error) <span class="cov8" title="1">{
+        d.Locker.RLock()
+        defer d.Locker.RUnlock()
+        return stats.Percentile(d.sliceOfFloat64Unlocked(field), percent)
+}</span>
+
+// Mode returns the most frequently occurring value(s) in the specified field.
+// Multiple values are returned if there is a tie for the most frequent.
+func (d *DataFrame) Mode(field KeyName) ([]float64, error) <span class="cov8" title="1">{
+        d.Locker.RLock()
+        defer d.Locker.RUnlock()
+        return stats.Mode(d.sliceOfFloat64Unlocked(field))
+}</span>
+
+// Range calculates the difference between the maximum and minimum values
+// in the specified field and returns it as a float64.
+func (d *DataFrame) Range(field KeyName) (float64, error) <span class="cov8" title="1">{
+        d.Locker.RLock()
+        defer d.Locker.RUnlock()
+        data := d.sliceOfFloat64Unlocked(field)
+        if len(data) == 0 </span><span class="cov0" title="0">{
+                return 0, stats.EmptyInputErr
+        }</span>
+        <span class="cov8" title="1">minVal, err := stats.Min(data)
+        if err != nil </span><span class="cov0" title="0">{
+                return 0, err
+        }</span>
+        <span class="cov8" title="1">maxVal, err := stats.Max(data)
+        if err != nil </span><span class="cov0" title="0">{
+                return 0, err
+        }</span>
+        <span class="cov8" title="1">return maxVal - minVal, nil</span>
+}
+
+// GeometricMean calculates the geometric mean of the values in the specified field
+// and returns it as a float64 along with any error.
+func (d *DataFrame) GeometricMean(field KeyName) (float64, error) <span class="cov8" title="1">{
+        d.Locker.RLock()
+        defer d.Locker.RUnlock()
+        return stats.GeometricMean(d.sliceOfFloat64Unlocked(field))
+}</span>
+
+// HarmonicMean calculates the harmonic mean of the values in the specified field
+// and returns it as a float64 along with any error.
+func (d *DataFrame) HarmonicMean(field KeyName) (float64, error) <span class="cov8" title="1">{
+        d.Locker.RLock()
+        defer d.Locker.RUnlock()
+        return stats.HarmonicMean(d.sliceOfFloat64Unlocked(field))
+}</span>
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package mframe
+
+import (
+        "log"
+        "time"
+)
+
+// Stats log statistical information about string, numeric, and boolean indices in the DataFrame for tracking purposes.
+func (d *DataFrame) Stats(name string) <span class="cov8" title="1">{
+        for </span><span class="cov8" title="1">{
+                d.Locker.RLock()
+
+                log.Printf("[%s] data in memory: %d", name, len(d.Data))
+                log.Printf("[%s] string indices: %d", name, len(d.Strings))
+                log.Printf("[%s] numeric indices: %d", name, len(d.Numerics))
+                log.Printf("[%s] boolean indices: %d", name, len(d.Booleans))
+
+                for k1, v1 := range d.Strings </span><span class="cov8" title="1">{
+                        log.Printf(`[%s] %d values in '%s' string index`, name, len(v1), k1)
+                        for k2, v2 := range v1 </span><span class="cov8" title="1">{
+                                log.Printf(`[%s] %d IDs for value '%s' in '%s' string index`, name, len(v2), k2, k1)
+                        }</span>
+                }
+
+                <span class="cov8" title="1">for k1, v1 := range d.Numerics </span><span class="cov0" title="0">{
+                        log.Printf(`[%s] %d values in '%s' numeric index`, name, len(v1), k1)
+                        for k2, v2 := range v1 </span><span class="cov0" title="0">{
+                                log.Printf(`[%s] %d IDs for value '%f' in '%s' numeric index`, name, len(v2), k2, k1)
+                        }</span>
+                }
+
+                <span class="cov8" title="1">for k1, v1 := range d.Booleans </span><span class="cov0" title="0">{
+                        log.Printf(`[%s] %d values in '%s' boolean index`, name, len(v1), k1)
+                        for k2, v2 := range v1 </span><span class="cov0" title="0">{
+                                log.Printf(`[%s] %d IDs for value '%t' in '%s' boolean index`, name, len(v2), k2, k1)
+                        }</span>
+                }
+
+                <span class="cov8" title="1">d.Locker.RUnlock()
+
+                time.Sleep(1 * time.Minute)</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package mframe
+
+// ToSlice converts the DataFrame into a slice of Row, preserving the order of rows in the DataFrame.
+func (d *DataFrame) ToSlice() []Row <span class="cov8" title="1">{
+        d.Locker.RLock()
+        defer d.Locker.RUnlock()
+        var result = make([]Row, 0, len(d.Data))
+
+        for _, row := range d.Data </span><span class="cov8" title="1">{
+                result = append(result, row)
+        }</span>
+
+        <span class="cov8" title="1">return result</span>
+}
+
+// SliceOf returns a slice of interface values corresponding to the specified field
+// (KeyName) from the DataFrame's data rows.
+func (d *DataFrame) SliceOf(field KeyName) []interface{} <span class="cov8" title="1">{
+        d.Locker.RLock()
+        defer d.Locker.RUnlock()
+        return d.sliceOfUnlocked(field)
+}</span>
+
+// sliceOfUnlocked returns a slice of interface values without acquiring locks
+func (d *DataFrame) sliceOfUnlocked(field KeyName) []interface{} <span class="cov8" title="1">{
+        var list []interface{}
+        for _, v := range d.Data </span><span class="cov8" title="1">{
+                value, ok := v[field]
+                if !ok </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+                <span class="cov8" title="1">list = append(list, value)</span>
+        }
+
+        <span class="cov8" title="1">return list</span>
+}
+
+// SliceOfFloat64 extracts and returns a slice of float64 values from the specified field in the DataFrame.
+func (d *DataFrame) SliceOfFloat64(field KeyName) []float64 <span class="cov8" title="1">{
+        d.Locker.RLock()
+        defer d.Locker.RUnlock()
+        return d.sliceOfFloat64Unlocked(field)
+}</span>
+
+// sliceOfFloat64Unlocked extracts float64 values without acquiring locks
+func (d *DataFrame) sliceOfFloat64Unlocked(field KeyName) []float64 <span class="cov8" title="1">{
+        list := d.sliceOfUnlocked(field)
+
+        var fList = make([]float64, 0, len(list))
+
+        for _, value := range list </span><span class="cov8" title="1">{
+                v, ok := value.(float64)
+                if !ok </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">fList = append(fList, v)</span>
+        }
+
+        <span class="cov8" title="1">return fList</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
