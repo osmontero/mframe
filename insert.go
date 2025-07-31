@@ -123,6 +123,7 @@ func (d *DataFrame) index(kv map[KeyName]interface{}, wrapKey KeyName, id uuid.U
 			}
 
 			timeValue := kvValue.(time.Time)
+			(*row)[kvKey] = timeValue
 
 			if len(d.Times[kvKey]) == 0 {
 				d.Times[kvKey] = make(map[time.Time]map[uuid.UUID]bool)

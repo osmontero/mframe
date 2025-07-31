@@ -65,6 +65,7 @@ type DataFrame struct {
 	regexCacheSize int
 	maxRegexCache  int
 	stopCleaner    chan bool
+	Version        int // For persistence format versioning
 }
 
 // Init initializes the DataFrame with default indexes, an empty data map, and sets the TTL for data expiration.
@@ -80,6 +81,7 @@ func (d *DataFrame) Init(ttl time.Duration) {
 	d.regexCache = make(map[string]*regexp.Regexp)
 	d.maxRegexCache = 1000 // Default cache size
 	d.stopCleaner = make(chan bool)
+	d.Version = 1 // Current persistence format version
 }
 
 // InitWithOptions initializes the DataFrame with custom options.
